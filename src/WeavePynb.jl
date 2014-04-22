@@ -2,7 +2,7 @@ module WeavePynb
 
 using JSON, Mustache
 
-export markdownToPynb
+export markdownToPynb, markdownToLaTex
 
 ## From Judo.pandoc
 function pandoc(input::String, infmt::Symbol, outfmt::Symbol, args::String...)
@@ -19,8 +19,8 @@ function pandoc(input::String, infmt::Symbol, outfmt::Symbol, args::String...)
 end
 
 
-## mustache template
-   tpl = """
+## mustache template for ipynb
+   ipynb_tpl = """
 {"metadata": {
  "language": "Julia",
  "name": "{{{TITLE}}}"
@@ -37,6 +37,17 @@ end
 }
 """
 
+## mustache template for LaTex
+latex_tpl = """
+\\documentclass{article}
+\\usepackage{geometry}
+\\usepackage{amsmath}
+\\usepackage{hyperref}
+\\begin{document}
+{{{body}}}
+\\end{document}
+"""
+
 function markdownToPynb(fname::String)
     dirnm, basenm = dirname(fname), basename(fname)
     newnm = replace(fname, r"[.].*", ".ipynb")
@@ -50,10 +61,12 @@ function mdToPynb(infn::String)
     metadata, document = JSON.parse(pandoc(infn, :markdown, :json))
     newblocks = Any[]
     
+    ## queue up markdown blocks
+    ## send code block to ipython..
     for block in document
         cell = Dict()
         cell["metadata"] = Dict()
-        if haskey(block, "CodeBlock")
+        if isa(block, Dict) && haskey(block, "CodeBlock")
             cell["cell_type"] = "code"
             cell["collapsed"] = "false"
             cell["input"] = block["CodeBlock"][2]
@@ -74,7 +87,22 @@ function mdToPynb(infn::String)
     end
     
     ## return string
-    Mustache.render(tpl, {"TITLE" => "TITLE", "CELLS" => join(newblocks, ",\n")})
+    Mustache.render(ipynb_tpl, {"TITLE" => "TITLE", "CELLS" => join(newblocks, ",\n")})
 
 end
+
+function markdownToLaTex(fname::String)
+    dirnm, basenm = dirname(fname), basename(fname)
+    newnm = replace(fname, r"[.].*", ".tex")
+    out = pandoc(readall(fname), :markdown, :latex)
+
+    io = open(newnm, "w")
+    Mustache.render(io, latex_tpl, {"body" => out})
+    write(io, out)
+    close(io)
+
+    run(`pdflatex --nonstopmode $newnm`)
+end
+    
+
 end # module
