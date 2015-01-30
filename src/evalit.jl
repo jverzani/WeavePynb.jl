@@ -46,3 +46,10 @@ function safeeval(ex::Union(Symbol, Expr))
     end
 end
 
+function process_block(text)
+    result = ""
+    for (cmd, ex) in parseit(strip(text))
+        result = safeeval(ex)
+    end
+    result
+end
