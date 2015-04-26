@@ -2,8 +2,6 @@
 
 import Base: start, next, done
 
-
-
 # An iterator for the parse function: parsit(source) will iterate over the
 # expressiosn in a string.
 type ParseIt
@@ -36,20 +34,37 @@ end
 module WeaveSandbox
 end
 
+"""
+
+Make a module of a given name.
+
+"""
+function make_module(nm=randstring())
+    nm = "Z"*uppercase(nm)
+    eval(parse("module " * nm * " end"))
+    eval(parse(nm))
+end
+
+type DisplayError
+    x
+end
+Base.writemime(io::IO, ::MIME"text/plain", e::DisplayError) = print(io, e.x)
+
 
 # Evaluate an expression and return its result and a string.
-function safeeval(ex::Union(Symbol, Expr))
+function safeeval(m, ex::Union(Number,Symbol, Expr))
     try
-        eval(WeaveSandbox, ex)
+        eval(m, ex)
     catch e
         println("Error with evaluating $ex: $(string(e))")
+        DisplayError(string(e))
     end
 end
 
-function process_block(text)
+function process_block(text, m = WeaveSandbox)
     result = ""
     for (cmd, ex) in parseit(strip(text))
-        result = safeeval(ex)
+        result = safeeval(m, ex)
     end
     result
 end

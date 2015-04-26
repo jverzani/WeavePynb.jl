@@ -3,8 +3,11 @@
 [![Build Status](https://travis-ci.org/jverzani/WeavePynb.jl.png)](https://travis-ci.org/jverzani/WeavePynb.jl)
 
 
-Simple package to convert markdown files to IJulia notebooks. The main
-function is `markdownToPynb(file_name::String)` which writes to
-`file_name.ipynb` a notebook with unevaluated cells.
+Simple package to convert markdown files to
 
-This package needs the `pandoc` program to be installed.
+* IJulia notebooks. (`markdownToPynb`)
+* HTML files with self-grading questions (`markdownToHTML`)
+* LaTeX files. (not yet done, but will require pandoc)
+* idiosyncratic LaTeX files with grading (`markdownToLaTeXQ`), this requires `pandoc`
+
+This is pretty hacky.

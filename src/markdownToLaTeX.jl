@@ -1,3 +1,30 @@
+## utils
+# Super-simple pandoc interface.
+function pandoc(infn, infmt::String, outfmt::String, args::String...)
+    cmd = ByteString["pandoc",
+                     "--from=$(infmt)",
+                     "--to=$(outfmt)"]
+    for arg in args
+        push!(cmd, arg)
+    end
+
+    readall(infn |> Cmd(cmd))
+end
+
+"""
+Take a string in markdown and covert to LaTeX via pandoc
+"""
+function markdown_to_latex(txt)
+    infn = tempname() * ".md"
+    io = open(infn, "w"); print(io, txt); close(io)
+    out = pandoc(infn, "markdown", "latex")
+    rm(infn)
+    out
+end
+
+
+## Need to iron this out how to do questions so taht we have them in both latex and not.
+
 
 
 ## turn jmd file into latex
@@ -13,19 +40,6 @@ end
   
 
 ## Main function to take a jmd file and turn into a ipynb file
-function markdownToPynb(fname::String;tidy::Bool=true)
-    dirnm, basenm = dirname(fname), basename(fname)
-    newnm = replace(fname, r"[.].*", ".ipynb")
-    out = mdToPynb(readall(fname))
-    
-    io = open(newnm, "w")
-    write(io, out)
-    close(io)
-    tidy && tidyipynb(newnm)
-end
-      
-
-import Base.parse
 
 
 # A special module in which a documents code is executed.
@@ -46,9 +60,10 @@ radioq_tpl = """
 \\begin{answer}
 type: radio
 reminder: {{{reminder}}}
-values: {{{values}}}
-labels: {{{labels}}}
+values: {{{choices}}}
+labels: {{{choices}}}
 answer: {{{answer}}}
+{{#answer_text}}answer_text: {{{answer_text}}} {{/answer_text}}
 \\end{answer}
 """
 
@@ -83,48 +98,52 @@ cols: {{{cols}}}
 \\end{answer}
 """
 
+type Question
+    x
+end
+
 function numericq(val, tol=1e-3, reminder="", answer_text=nothing)
-   Mustache.render(numericq_tpl, {"reminder"=>reminder,
-                                  "answer_text"=>answer_text,
-                                  "m"=>val-tol,
-                                  "M"=>val+tol
-                                  })
+    Question(Mustache.render(numericq_tpl, {"reminder"=>reminder,
+                                   "answer_text"=>answer_text,
+                                   "m"=>val-tol,
+                                   "M"=>val+tol
+                                   }))
 end
 
 
 function radioq(choices, answer, reminder="", answer_text=nothing)
-   Mustache.render(radioq_tpl, {"reminder"=>reminder,
+    Question(Mustache.render(radioq_tpl, {"reminder"=>reminder,
                                   "answer_text"=>answer_text,
                                   "values" => join(1:length(choices), " | "),
                                   "labels" => join(choices, " | "),
                                   "answer" => answer
-                                  })
+                                  }))
 end
 booleanq(ans::Bool, reminder="", answer_text=nothing) = radioq(["True", "False"], 2 - int(ans), reminder, answer_text)
 
 ## multi choice
 function multiq(choices, answer, reminder="", answer_text=nothing)
-   Mustache.render(multiq_tpl, {"reminder"=>reminder,
+    Question(Mustache.render(multiq_tpl, {"reminder"=>reminder,
                                   "answer_text"=>answer_text,
                                   "values" => join(1:length(choices), " | "),
                                   "labels" => join(choices, " | "),
                                   "answer" => join(answer, " | ")
-                                  })
+                                  }))
 end
 
 function shortq(answer, reminder="", answer_text=nothing)
-     Mustache.render(shortq_tpl, {"reminder"=>reminder,
-                                  "answer_text"=>answer_text,
-                                  "answer" => answer
-                                  })
+    Question(Mustache.render(shortq_tpl, {"reminder"=>reminder,
+                                          "answer_text"=>answer_text,
+                                          "answer" => answer
+                                          }))
 end
 
 function longq(reminder="", answer_text=nothing;rows=3,cols=60)
-     Mustache.render(longq_tpl, {"reminder"=>reminder,
-                                  "answer_text"=>answer_text,
-                                 "rows" => rows,
-                                 "cols" => cols
-                                  })
+    Question(Mustache.render(longq_tpl, {"reminder"=>reminder,
+                                         "answer_text"=>answer_text,
+                                         "rows" => rows,
+                                         "cols" => cols
+                                         }))
 end
 
 
