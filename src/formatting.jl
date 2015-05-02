@@ -25,6 +25,22 @@ Invisible()
 type Invisible
 end
 
+""" 
+Show output as HTML
+
+Examples
+```
+HTMLoutput("<em>em</em>")
+```
+
+"""
+type HTMLoutput
+    x
+end
+Base.writemime(io::IO, ::MIME"text/plain", x::HTMLoutput) = print(io, """<div>$(x.x)</div>""")
+Base.writemime(io::IO, ::MIME"text/html", x::HTMLoutput) = print(io, x.x)
+
+
 
 """
 Show as input, but do not execute.
