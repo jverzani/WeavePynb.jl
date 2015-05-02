@@ -26,6 +26,7 @@ type Numericq <: Question
     answer_text::MaybeString
     m::Real
     M::Real
+    units
     hint
 end
 
@@ -78,12 +79,13 @@ Arguments:
 * `reminder` a reminder as to what question is, student may see
 * `answer_text`: reminder of what answer is, student does not see
 * `hint`: a possible hint for the student
+* `units`: a string holding the units, if specified.
 
 Returns an object of type `Question`.
 """
-function numericq(val, tol=1e-3, reminder="", args...; hint::String="")
+function numericq(val, tol=1e-3, reminder="", args...; hint::String="", units::String="")
     answer_text= "[$(round(val-tol,3)), $(round(val+tol,3))]"
-    Numericq(val, tol, reminder, answer_text, val-tol, val+tol, hint)
+    Numericq(val, tol, reminder, answer_text, val-tol, val+tol, units, hint)
 end
 
 numericq(val::Int; kwargs...) = numericq(val, 0; kwargs...)
@@ -107,7 +109,7 @@ function radioq(choices, answer, reminder="", answer_text=nothing;  hint::String
     ind = collect(1:length(choices))
     !keep_order && shuffle!(ind)
     
-    Radioq(choices[ind], ind[answer], reminder, answer_text, values[ind], labels[ind], hint, inline)
+    Radioq(choices[ind], findfirst(ind, answer), reminder, answer_text, values[ind], labels[ind], hint, inline)
 end
 
 """
@@ -122,10 +124,11 @@ end
 
 """
 
-`yesnoq("yes")`
+`yesnoq("yes")` or `yesnoq(true)`
 
 """
-yesnoq(ans) = radioq(["Yes", "No"], ans == "yes" ? 1 : 2, keep_order=true)
+yesnoq(ans::String) = radioq(["Yes", "No"], ans == "yes" ? 1 : 2, keep_order=true)
+yesnoq(ans::Bool) = yesnoq(ans ? "yes" : "no")
 
 function multiq(choices, answer, reminder="", answer_text=nothing; hint::String="", inline::Bool=false)
     values = join(1:length, " | ")
@@ -228,7 +231,12 @@ html_templates["Numericq"] = mt"""
 <span class='help-inline'><i id='{{ID}}_hint' class='icon-gift'></i></span>
 <script>$('#{{ID}}_hint').tooltip({title:'{{{hint}}}', html:true, placement:'right'});</script>
 {{/hint}}
-<input id="{{ID}}" type="number">
+
+<div class="input-group">
+<input id="{{ID}}" type="number" class="form-control">
+{{#units}}<span class="input-group-addon">{{{units}}}</span>{{/units}}
+</div>
+  
 <div id='{{ID}}_message'></div>
 </div>
 </div>
@@ -253,6 +261,7 @@ function writemime(io::IO, m::MIME"text/html", x::Numericq)
     d["selector"] = "#" * d["ID"]
     d["status"] = ""
     d["hint"] = ""# x.hint
+    d["units"] = x.units
     d["correct"] = "Math.abs(this.value - $(x.val)) <= $(x.tol)"
     println(d)
     out =  Mustache.render(html_templates["Numericq"], d)
