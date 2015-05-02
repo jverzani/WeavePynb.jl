@@ -184,7 +184,11 @@ function mdToHTML(fname::String; TITLE="", kwargs...)
             elseif isa(result, Invisible)
                 "Do not show output or input"
                 nothing
-            elseif isa(result, Verbatim) #ismatch(r"Verbatim", string(typeof(result)))
+            elseif isa(result, HTMLoutput) 
+                "Do not execute input, show as is"
+                txt = ""
+                writemime(buf, "text/plain", result)
+            elseif isa(result, Verbatim) 
                 "Do not execute input, show as is"
                 writemime(buf, "text/plain", result)
             elseif isa(result, Bootstrap)
