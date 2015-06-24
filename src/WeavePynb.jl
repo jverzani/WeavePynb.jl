@@ -28,7 +28,7 @@ export markdownToPynb
 export markdownToHTML
 export markdownToLaTeXQ
 
-export Verbatim, Invisible, Outputonly, ImageFile
+export Verbatim, Invisible, Outputonly, ImageFile, HTMLonly
 export alert, warning, note
 export example, popup, table
 export gif_to_data

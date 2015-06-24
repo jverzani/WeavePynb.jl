@@ -152,7 +152,7 @@ The text, title, and label can use Markdown.
 LaTeX markup does not work, as MathJax rendering is not supported in the popup.
 
 """
-popup(x; title="", icon="share-alt", label="") = Popup(x, title, icon, label)
+popup(x; title=" ", icon="share-alt", label=" ") = Popup(x, title, icon, label)
 
 popup_html_tpl=mt"""
 <button type="button" class="btn btn-sm" aria-label="Left Align"

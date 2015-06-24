@@ -53,7 +53,8 @@ MathJax.Hub.Config({
   tex2jax: {
     inlineMath: [ ["\$","\$"], ["\\(","\\)"]]
   },
-  displayAlign: "left"
+  displayAlign: "left",
+  displayIndent: "5%"
 });
 </script>
 
@@ -275,14 +276,22 @@ function mmd_to_html(fname::String; kwargs...)
     ismatch(r"\.mmd$", bname) || error("this is for mmd template files")
     bname = replace(bname, r"\.mmd$", "")
 
-    reload("$bname.jl")
+    jl = replace(fname,".mmd",".jl")
+    hml = replace(fname,".mmd",".html")
+    mmd = fname
 
-    tpl = Mustache.template_from_file(fname)
     
-    io = open("$bname.md", "w")
-    write(io, Mustache.render(tpl, Main.(symbol(bname))))
-    close(io)
+    ## do this only if html file older than either .mmd or .jl
+    if !isfile(hml) || (mtime(mmd) > mtime(hml)) | (mtime(jl) > mtime(hml))
+        reload("$bname.jl")
 
-    markdownToHTML("$bname.md"; kwargs...)
+        tpl = Mustache.template_from_file(fname)
+    
+        io = open("$bname.md", "w")
+        write(io, Mustache.render(tpl, Main.(symbol(bname))))
+        close(io)
+
+        markdownToHTML("$bname.md"; kwargs...)
+    end
 end
 export mmd_to_html
