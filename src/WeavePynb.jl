@@ -5,11 +5,11 @@ module WeavePynb
 ## have a weave that:
 ## markdownToHTML: creates web page with questions
 ## markdownToPynb: creates notebooks, evaluated
-## markdownToLaTeX: creates latex files from markdown (needs Pandoc)
-## markdownToLaTeXQ: creates latex with questions handled so they can be picked up (not done yet)
+## markdownToLaTeXQ: creates latex with questions handled so they can be picked up
+## markdownToLaTeX: creates latex files from markdown (XXX??)
 
 
-using JSON, Mustache, Markdown, LaTeXStrings
+using JSON, Mustache, Markdown, LaTeXStrings, Compose
 
 
 include("evalit.jl")

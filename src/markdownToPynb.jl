@@ -1,5 +1,5 @@
 ## mustache template for ipynb
-ipynb_tpl = mt"""
+ipynb_tpl_v3 = mt"""
 {"metadata": {
 "language": "Julia",
  "name": "{{{TITLE}}}"
@@ -12,38 +12,69 @@ ipynb_tpl = mt"""
      {{{CELLS}}}
     ],
    "metadata": {}
-  }]
+  }
+]
 }
 """
 
+ipynb_tpl_v4 = mt"""
+{
+  "cells": [
+     {{{CELLS}}}
+    ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Julia 0.3.9",
+   "language": "julia",
+   "name": "julia-0.3"
+  },
+  "language_info": {
+   "name": "julia",
+   "version": "0.3.9"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 0
+
+}
+"""
+const ipynb_tpl = ipynb_tpl_v4
 
 ## graphs. Don't want to dispatch, as packages are loaded in module, not global..
 function render_winston(img)
     ## need a cell
     out = Dict()
     out["metadata"] = Dict()
-    out["output_type"] = "pyout"
+    out["output_type"] = "execute_result"
     out["png"] = stringmime("image/png", img)
     out
 end
 
 function render_gadfly(img)
     ## need a cell
+
+    imgfile = tempname()
+    open(imgfile, "w") do io
+        draw(PNG(io, 5inch, inch), img)
+    end
+    data = readall(`julia4 -e "base64encode(readall(\"$imgfile\")) |> print"`);
     
     out = Dict()
-    out["metadata"] = Dict()
-    out["output_type"] = "display_data"
-    x = sprint(io -> tohtml(io, img))
-    x = split(x, "\n")
-    x = map(a -> a*"\n", x)
-    out["html"] = x
+#    out["metadata"] = Dict()
+    out["data"] = Dict()
+#    x = sprint(io -> tohtml(io, img))
+#    x = split(x, "\n")
+#    x = map(a -> a*"\n", x)
+    #out["html"] = x
+    out["data"]["image/png"] = data
+    out["data"]["text/plain"] = ["Plot(...)"]
     out
 end
 
 function render_pyplot(img)
     out = Dict()
     out["metadata"] = Dict()
-    out["output_type"] = "pyout"
+    out["output_type"] = "execute_result"
     out["png"] = stringmime("image/png", img)
     img[:clear]()
     out
@@ -93,9 +124,11 @@ function mdToPynb(fname::String)
     for i in 1:length(out.content)
         cell = Dict()
         cell["metadata"] = Dict()
-        cell["prompt_number"] = i
+##        cell["prompt_number"] = i
         
         if isa(out.content[i], Markdown.BlockCode)
+            println("==== Block Code ====")
+            println(out.content[i])
             ## Code Blocks are evaluated and their last value is added to the output
             ## this is different from IJulia, but similar.
             ## There are issues with Gadfly graphics (need the script...)
@@ -106,9 +139,11 @@ function mdToPynb(fname::String)
 
             
             cell["cell_type"] = "code"
-            cell["collapsed"] = false
-            cell["languge"] = "python"
-            cell["input"] = txt
+            cell["execution_count"] = nothing
+            #cell["collapsed"] = false
+            #cell["language"] = "python"
+            #            cell["input"] = txt
+            cell["source"] = [txt]
             
 
             ## special cases: questions and graphical output
@@ -120,8 +155,11 @@ function mdToPynb(fname::String)
                 cell["outputs"] = []
             elseif isa(result, Verbatim) 
                 "Do not execute input, show as is"
-                cell["input"] = result.x
-                cell["outputs"] = []
+#                cell["input"] = result.x
+#                cell["outputs"] = []
+                cell["cell_type"] = "markdown"
+                cell["source"] = "<pre>$(result.x)</pre>"
+                delete!(cell, "execution_count")
             elseif string(typeof(result)) == "FramedPlot"
                 ## Winston graphics
                 cell["outputs"] = [render_winston(result)]
@@ -132,17 +170,21 @@ function mdToPynb(fname::String)
                     ## Seems like injecting <script> failes.
                     const gadfly_preamble = joinpath(dirname(@__FILE__), "..", "tpl", "gadfly-preamble.js")
                     script = "<script>$(readall(gadfly_preamble))</script>"
-                    preamble = Dict()
-                    preamble["metadata"] = Dict()
-                    preamble["output_type"] = "display_data"
-                    preamble["html"] = [script]
+
+                    res = render_gadfly(result)
+#                    push!(res["data"]["image/svg+xml"], script)
+#                    preamble = Dict()
+#                    preamble["metadata"] = Dict()
+#                    preamble["output_type"] = "display_data"
+#                    preamble["html"] = [script]
                     added_gadfly_preamble = true
 
-                    cell["outputs"] = [preamble, render_gadfly(result)]
+                    cell["outputs"] = [res]
                 else
                     cell["outputs"] = [render_gadfly(result)]
                     ##cell["outputs"] = []
                 end
+#                cell["output_type"] = "execute_reult"
                 
             elseif string(typeof(result)) == "Figure"
                 ## *basic* PyPlot graphics.
@@ -155,22 +197,39 @@ function mdToPynb(fname::String)
                 end
             else
                 tmp = Dict()
-                tmp["metdata"] =Dict()
+                tmp["metadata"] =Dict()
                 mtype =  bestmime(result)
-                tmp["output_type"] = "pyout"
-                outtype = ifelse(ismatch(r"latex", string(mtype)), "latex", "text")
+                tmp["output_type"] = "execute_result"
+                tmp["execution_count"] = nothing
+                #                outtype = ifelse(ismatch(r"latex", string(mtype)), "latex", "text")
+                outtype = ifelse(ismatch(r"latex", string(mtype)), "text/latex", "text/plain")
                 output = ""
                 try 
                     output =  [sprint(io -> writemime(io, mtype, result))]
                 catch e
                 end
-                tmp[outtype] =output
-
+                tmp["data"] = Dict()
+                tmp["data"][outtype] = [output]
+                
                 cell["outputs"] = [tmp]
             end
             
         else
             cell["cell_type"] = "markdown"
+            BigHeader = Union(Markdown.Header{1},Markdown.Header{2})
+            if isa(out.content[i], Markdown.Header)
+                d = Dict()
+                d["internals"] = Dict()
+                if isa(out.content[i], BigHeader)
+                    d["internals"]["slide_helper"] = "subslide_end"
+                end
+                d["internals"]["slide_type"] = "subslide"
+                d["slide_helper"]="slide_end"
+                d["slideshow"] = Dict()
+                d["slideshow"]["slide_type"] = isa(out.content[i], BigHeader) ? "slide" : "subslide"
+                cell["metadata"] = d
+            end
+            
             cell["source"] = sprint(io -> tohtml(io, out.content[i]))
         end
 

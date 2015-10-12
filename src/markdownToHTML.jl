@@ -174,9 +174,9 @@ function mdToHTML(fname::String; TITLE="", kwargs...)
                 txt = ""
                 result = result.x
             end
-            println("=====")            
-            println(typeof(result))
-            println("=====")
+            # println("=====")            
+            # println(typeof(result))
+            # println("=====")
             ## special cases
             if isa(result, Nothing)
                 "Do not show output, just input"
