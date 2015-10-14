@@ -5,11 +5,11 @@ import Base: start, next, done
 # An iterator for the parse function: parsit(source) will iterate over the
 # expressiosn in a string.
 type ParseIt
-    value::String
+    value::AbstractString
 end
 
 
-function parseit(value::String)
+function parseit(value::AbstractString)
     ParseIt(value)
 end
 
@@ -52,7 +52,7 @@ Base.writemime(io::IO, ::MIME"text/plain", e::DisplayError) = println(io, e.x)
 
 
 # Evaluate an expression and return its result and a string.
-function safeeval(m, ex::Union(Number,Symbol, Expr))
+function safeeval(m, ex::Union{Number,Symbol, Expr})
     try
         eval(m, ex)
     catch e

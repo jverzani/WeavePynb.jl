@@ -9,15 +9,15 @@ The rendering of the questions depends on the output:
 * questions: use idiosyncratic dcf-style markup for questions
 
 """
+nothing
 
 using Mustache, LaTeXStrings
 import Base: writemime
 
-"Abstract type to hold a question"
 abstract Question
 
 
-MaybeString = Union(ASCIIString, String, Nothing)
+MaybeString = Union{ASCIIString, AbstractString, Void}
 
 type Numericq <: Question
     val::Real
@@ -33,7 +33,7 @@ end
 type Radioq <: Question
     choices::Vector
     answer::Int
-    reminder::String
+    reminder::AbstractString
     answer_text::MaybeString
     values
     labels
@@ -46,7 +46,7 @@ end
 type Multiq <: Question
     choices::Vector
     answer::Vector{Int}
-    reminder::String
+    reminder::AbstractString
     answer_text::MaybeString
     values
     labels
@@ -57,13 +57,13 @@ end
 
 type Shortq <: Question
     answer
-    reminder::String
+    reminder::AbstractString
     answer_text::MaybeString
     hint
 end
 
 type Longq <: Question
-    reminder::String
+    reminder::AbstractString
     answer_text::MaybeString
     hint
     rows::Int
@@ -83,7 +83,7 @@ Arguments:
 
 Returns an object of type `Question`.
 """
-function numericq(val, tol=1e-3, reminder="", args...; hint::String="", units::String="")
+function numericq(val, tol=1e-3, reminder="", args...; hint::AbstractString="", units::AbstractString="")
     answer_text= "[$(round(val-tol,3)), $(round(val+tol,3))]"
     Numericq(val, tol, reminder, answer_text, val-tol, val+tol, units, hint)
 end
@@ -102,7 +102,7 @@ Example
 radioq(["beta", L"\beta", "`beta`"], 2, hint="which is the Greek symbol")
 ```
 """
-function radioq(choices, answer, reminder="", answer_text=nothing;  hint::String="", inline::Bool=(hint!=""),
+function radioq(choices, answer, reminder="", answer_text=nothing;  hint::AbstractString="", inline::Bool=(hint!=""),
                 keep_order::Bool=false)
     values = join(1:length(choices), " | ")
     labels = map(markdown_to_latex,choices) |> x -> map(chomp, x) |> x -> join(x, " | ")
@@ -116,7 +116,7 @@ end
 True of false questions
 
 """
-function booleanq(ans::Bool, reminder="", answer_text=nothing;labels::Vector=["true", "false"], hint::String="", inline::Bool=true) 
+function booleanq(ans::Bool, reminder="", answer_text=nothing;labels::Vector=["true", "false"], hint::AbstractString="", inline::Bool=true) 
     choices = labels[1:2]
     ans = 2 - ans
     radioq(choices, ans, reminder, answer_text; hint=hint, inline=inline, keep_order=true)
@@ -127,10 +127,10 @@ end
 `yesnoq("yes")` or `yesnoq(true)`
 
 """
-yesnoq(ans::String) = radioq(["Yes", "No"], ans == "yes" ? 1 : 2, keep_order=true)
+yesnoq(ans::AbstractString) = radioq(["Yes", "No"], ans == "yes" ? 1 : 2, keep_order=true)
 yesnoq(ans::Bool) = yesnoq(ans ? "yes" : "no")
 
-function multiq(choices, answer, reminder="", answer_text=nothing; hint::String="", inline::Bool=false)
+function multiq(choices, answer, reminder="", answer_text=nothing; hint::AbstractString="", inline::Bool=false)
     values = join(1:length, " | ")
     labels =  map(markdown_to_latex, choices) |> x -> map(chomp, x) |> x -> join(x, " | ")
     answers = join(answer, " | ")
@@ -141,11 +141,11 @@ function multiq(choices, answer, reminder="", answer_text=nothing; hint::String=
            )
 end
 
-function shortq(answer, reminder="", answer_text=nothing;hint::String="")   
+function shortq(answer, reminder="", answer_text=nothing;hint::AbstractString="")   
     Shortq(answer, reminder, answer_text, hint)
 end
 
-function longq(reminder="", answer_text=nothing;hint::String="", rows=3, cols=60)    
+function longq(reminder="", answer_text=nothing;hint::AbstractString="", rows=3, cols=60)    
     Longq(reminder, answer_text, hint, rows, cols)
 end
 
@@ -340,26 +340,26 @@ println(choices)
     items = Dict[]
     ## make items
     for i in 1:length(choices)
-        item = {"no"=>i,
+        item = Dict("no"=>i,
                 "label"=>markdown(choices[i]), 
                 "value"=>i
-                }
+                )
         push!(items, item)
     end
 
     script = Mustache.render(html_templates["script_tpl"],
-                             {"ID"=>ID, 
+                             Dict("ID"=>ID, 
                               "selector"=>"input:radio[name='radio_$ID']",
-                              "correct"=>"this.value == $(x.answer)"})
+                              "correct"=>"this.value == $(x.answer)"))
     
-    form = Mustache.render(tpl, {"ID"=>ID, "items"=>items,
+    form = Mustache.render(tpl, Dict("ID"=>ID, "items"=>items,
                                  "inline" => x.inline ? " inline" : ""
-                                 })
+                                 ))
 
     Mustache.render(io, html_templates["question_tpl"],
-    {"form"=>form, "script"=>script, 
-    "TYPE"=>"radio",
-    "ID"=>ID, "hint"=>markdown(x.hint)})
+    Dict("form"=>form, "script"=>script, 
+         "TYPE"=>"radio",
+         "ID"=>ID, "hint"=>markdown(x.hint)))
 
 end
 

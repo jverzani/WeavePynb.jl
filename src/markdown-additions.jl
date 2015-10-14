@@ -2,9 +2,13 @@
 
 import Base: display, writemime
 
-graph_types = String["Plot", "FramedPlot"]
+graph_types = AbstractString["Plot", "FramedPlot"]
 
 function tohtml(io::IO, m::MIME"text/html", x)
+  writemime(io, m, x)
+end
+
+function tohtml(io::IO, m::MIME"text/latex", x)
   writemime(io, m, x)
 end
 
@@ -51,16 +55,16 @@ function with_delimiter(f, io, tag)
   print(io, "$tag")
 end
 
-writemime(io::IO, ::MIME"text/latex", md::Markdown.Content) =
-  writemime(io, "text/plain", md)
+#XXXwritemime(io::IO, ::MIME"text/latex", md::Markdown.Content) =
+#  writemime(io, "text/plain", md)
 
-function writemime(io::IO, mime::MIME"text/latex", block::Markdown.Block)
-  for md in block.content[1:end-1]
-    writemime(io::IO, mime, md)
-    println(io)
-  end
-  writemime(io::IO, mime, block.content[end])
-end
+##XXX function writemime(io::IO, mime::MIME"text/latex", block::Markdown.Block)
+##   for md in block.content[1:end-1]
+##     writemime(io::IO, mime, md)
+##     println(io)
+##   end
+##   writemime(io::IO, mime, block.content[end])
+## end
 
 function writemime{l}(io::IO, mime::MIME"text/latex", header::Markdown.Header{l})
     if l == 1 
@@ -74,15 +78,24 @@ function writemime{l}(io::IO, mime::MIME"text/latex", header::Markdown.Header{l}
     end
 end
 
-function writemime(io::IO, ::MIME"text/latex", code::Markdown.BlockCode)
+"heuristic to identify code blocks"
+const block_code_re = r"^\n.*\n$"
+is_blockcode(content) = isa(content, Markdown.Code) && ismatch(block_code_re, content.code)
+#function writemime(io::IO, ::MIME"text/latex", code::Markdown.BlockCode)
+function writemime(io::IO, ::MIME"text/latex", code::Markdown.Code)
+println((code.code, is_blockcode(code)))
+  if is_blockcode(code)
     with_delimiter(io, "verbatim") do
-        print(io, code.code)
+      print(io, code.code)
     end
+  else
+    print(io, "\\textt{$(code.code)}")
+  end
 end
 
-function writemime(io::IO, ::MIME"text/latex", code::Markdown.InlineCode)
-    print(io, "\\textt{$(code.code)}")
-end
+#function writemime(io::IO, ::MIME"text/latex", code::Markdown.InlineCode)
+#    print(io, "\\textt{$(code.code)}")
+#end
 
 function writemime(io::IO, ::MIME"text/latex", md::Markdown.Paragraph)
     println(io, "\\newline")
@@ -99,18 +112,18 @@ end
 
 function writemime(io::IO, ::MIME"text/latex", md::Markdown.List)
     with_environment(io, md.ordered ? "enumerate" : "itemize") do
-    for item in md.content
+    for item in md.items
         print(io, "\\item ")
-        writemime(io, "text/latex", item)
+        [writemime(io, "text/latex", i) for i in item]
     end
   end
 end
 
 # Inline elements
 
-function writemime(io::IO, ::MIME"text/latex", md::Markdown.Plain)
-  print(io, md.text)
-end
+##XXX function writemime(io::IO, ::MIME"text/latex", md::Markdown.Plain)
+##   print(io, md.text)
+## end
 
 function writemime(io::IO, ::MIME"text/latex", md::Markdown.Bold)
     print(io, "\\textbf{$(md.text)}")
@@ -128,3 +141,7 @@ function writemime(io::IO, ::MIME"text/latex", md::Markdown.Link)
     print(io, "\\url{$(md.url)}{$(md.text)}")
 end
 
+
+function writemime{T <: AbstractString}(io::IO, ::MIME"text/latex", md::T)
+   print(io, md)
+end

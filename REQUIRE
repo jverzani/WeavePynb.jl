@@ -2,3 +2,5 @@ julia 0.3
 JSON
 Mustache
 LaTeXStrings
+Plots
+Compose

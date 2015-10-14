@@ -122,9 +122,11 @@ $( document ).ready(function() {
 </html>
 """
 
+const snapsvgjs = Pkg.dir("Compose", "data", "snap.svg-min.js")
+
 
 ## Main function to take a jmd file and turn into an HTML
-function markdownToHTML(fname::String; TITLE="", kwargs...)
+function markdownToHTML(fname::AbstractString; TITLE="", kwargs...)
     
     dirnm, basenm = dirname(fname), basename(fname)
     newnm = replace(fname, r"[.].*", ".html")
@@ -149,7 +151,7 @@ Markdown idiosyncracies:
 * Can use LaTeX markup
 
 """
-function mdToHTML(fname::String; TITLE="", kwargs...)
+function mdToHTML(fname::AbstractString; TITLE="", kwargs...)
 
     m = make_module()
     safeeval(m, parse("using LaTeXStrings"))
@@ -161,24 +163,29 @@ function mdToHTML(fname::String; TITLE="", kwargs...)
     out = Markdown.parse_file(fname)
     for i in 1:length(out.content)
         println(out.content[i])
-        if isa(out.content[i], Markdown.BlockCode)
+        if isa(out.content[i], Markdown.Code)
             ## Code Blocks are evaluated and their last value is added to the output
             ## this is different from IJulia, but similar.
             ## There are issues with Gadfly graphics (need the script...)
             ## and PyPlot, where we need an invocation to manage the figures
             
             txt = out.content[i].code
-            result = process_block(txt, m)
+            lang = out.content[i].language
+            if lang == "" || lang == "j" || lang == "julia"
+                result = process_block(txt, m)
+            else
+                result = nothing
+            end
+
 
             if isa(result, Outputonly)
                 txt = ""
                 result = result.x
             end
-            # println("=====")            
-            # println(typeof(result))
-            # println("=====")
-            ## special cases
-            if isa(result, Nothing)
+
+
+## special cases
+            if result == nothing
                 "Do not show output, just input"
                 txt = replace(txt, r"\nnothing$", "") ## trim off trailing "nothing"
                 length(txt) > 0 && println(buf, """<pre class="sourceCode julia">$txt</pre>""")
@@ -202,6 +209,19 @@ function mdToHTML(fname::String; TITLE="", kwargs...)
                 "show an image stored in a file, but embed"
                 txt = ""
                 println(buf, gif_to_data(result.f, result.caption))
+            elseif isa(result, Plots.Plot)
+                if isa(result, Plots.Plot{Plots.GadflyPackage})
+                     length(txt) > 0 && println(buf, """<pre class="sourceCode julia">$txt</pre>""")
+                     if !added_gadfly_preamble
+                       ## XXX print out JavaScript
+                      added_gadfly_preamble = true
+                     end
+                     writemime(buf, "text/html", result.o)
+                 else
+                      length(txt) > 0 && println(buf, """<pre class="sourceCode julia">$txt</pre>""")
+                      img = stringmime("image/png", result.o)
+                      println(buf, """<img alt="Embedded Image" src="data:image/png;base64,$img">""")
+                 end
             elseif string(typeof(result)) == "FramedPlot"
                 length(txt) > 0 && println(buf, """<pre class="sourceCode julia">$txt</pre>""")
                 img = stringmime("image/png", result)
@@ -244,7 +264,13 @@ function mdToHTML(fname::String; TITLE="", kwargs...)
             end
             
         else
-            tohtml(buf, out.content[i])
+println(typeof(out.content[i]))
+           if isa(out.content[i], Markdown.LaTeX)
+println("latex")
+              Markdown.plain(buf, out.content[i])
+           else
+             Markdown.html(buf,  out.content[i])
+           end
         end
 
         
@@ -271,7 +297,7 @@ end
 
   XXX Needs work XXX
 """
-function mmd_to_html(fname::String; kwargs...)
+function mmd_to_html(fname::AbstractString; kwargs...)
     bname = basename(fname)
     ismatch(r"\.mmd$", bname) || error("this is for mmd template files")
     bname = replace(bname, r"\.mmd$", "")

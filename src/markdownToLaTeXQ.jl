@@ -23,7 +23,7 @@ ul li {list-style-image: url(http://www.math.csi.cuny.edu/static/images/julia.pn
 """
 
 ## Main function to take a jmd file and turn into a latex questions file
-function markdownToLaTeXQ(fname::String)
+function markdownToLaTeXQ(fname::AbstractString)
     dirnm, basenm = dirname(fname), basename(fname)
     newnm = replace(fname, r"[.].*", ".tex")
     out = mdToLaTeXQ(fname)
@@ -53,7 +53,7 @@ any subsequent figures are added to a new canvas
 
 """
 
-function mdToLaTeXQ(fname::String)
+function mdToLaTeXQ(fname::AbstractString)
 
     m = make_module()
     buf = IOBuffer()
@@ -144,5 +144,5 @@ function mdToLaTeXQ(fname::String)
     
     txt = takebuf_string(buf)
     ## return string
-    Mustache.render(latex_tpl, {"TITLE" => "TITLE", "txt" => txt})
+    Mustache.render(latex_tpl, Dict("TITLE" => "TITLE", "txt" => txt))
 end

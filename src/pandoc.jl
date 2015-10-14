@@ -1,7 +1,7 @@
 ## from Juno
 
 # Super-simple pandoc interface.
-function pandoc(infn, infmt::String, outfmt::String, args::String...)
+function pandoc(infn, infmt::AbstractString, outfmt::AbstractString, args::AbstractString...)
     cmd = ByteString["pandoc",
                      "--from=$(infmt)",
                      "--to=$(outfmt)"]

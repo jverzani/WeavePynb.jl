@@ -1,3 +1,4 @@
+__precompile__(false)
 module WeavePynb
 
 
@@ -9,8 +10,8 @@ module WeavePynb
 ## markdownToLaTeX: creates latex files from markdown (XXX??)
 
 
-using JSON, Mustache, Markdown, LaTeXStrings, Compose
-
+using JSON, Mustache, LaTeXStrings, Compose, Plots
+using Base.Markdown
 
 include("evalit.jl")
 include("pandoc.jl")

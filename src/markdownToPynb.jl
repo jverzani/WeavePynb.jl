@@ -23,21 +23,27 @@ ipynb_tpl_v4 = mt"""
      {{{CELLS}}}
     ],
  "metadata": {
-  "kernelspec": {
-   "display_name": "Julia 0.3.9",
-   "language": "julia",
-   "name": "julia-0.3"
-  },
   "language_info": {
    "name": "julia",
-   "version": "0.3.9"
+   "version": "0.4"
+  },
+ "kernelspec": {
+   "display_name": "Julia 0.4.0",
+   "language": "julia",
+   "name": "julia-0.4"
   }
+
  },
  "nbformat": 4,
  "nbformat_minor": 0
 
 }
 """
+
+not_needed = """
+ 
+"""
+
 const ipynb_tpl = ipynb_tpl_v4
 
 ## graphs. Don't want to dispatch, as packages are loaded in module, not global..
@@ -52,7 +58,7 @@ end
 
 function render_gadfly(img)
     ## need a cell
-
+    info("render gadfly")
     imgfile = tempname()
     open(imgfile, "w") do io
         draw(PNG(io, 5inch, inch), img)
@@ -72,6 +78,7 @@ function render_gadfly(img)
 end
 
 function render_pyplot(img)
+    info("render pyplot")
     out = Dict()
     out["metadata"] = Dict()
     out["output_type"] = "execute_result"
@@ -82,7 +89,7 @@ end
 
 
 ## Main function to take a jmd file and turn into a ipynb file
-function markdownToPynb(fname::String)
+function markdownToPynb(fname::AbstractString)
     
     dirnm, basenm = dirname(fname), basename(fname)
     newnm = replace(fname, r"[.].*", ".ipynb")
@@ -112,7 +119,7 @@ any subsequent figures are added to a new canvas
 
 """
 
-function mdToPynb(fname::String)
+function mdToPynb(fname::AbstractString)
 
     m = make_module()
     
@@ -125,8 +132,9 @@ function mdToPynb(fname::String)
         cell = Dict()
         cell["metadata"] = Dict()
 ##        cell["prompt_number"] = i
+
         
-        if isa(out.content[i], Markdown.BlockCode)
+        if isa(out.content[i], Markdown.Code)
             println("==== Block Code ====")
             println(out.content[i])
             ## Code Blocks are evaluated and their last value is added to the output
@@ -135,7 +143,12 @@ function mdToPynb(fname::String)
             ## and PyPlot, where we need an invocation to manage the figures
             
             txt = out.content[i].code
-            result = process_block(txt, m)
+            lang = out.content[i].language
+            if lang == "" || lang == "j" || lang == "julia"
+                result = process_block(txt, m)
+            else
+                result = nothing
+            end
 
             
             cell["cell_type"] = "code"
@@ -146,13 +159,30 @@ function mdToPynb(fname::String)
             cell["source"] = [txt]
             
 
-            ## special cases: questions and graphical output
-            if isa(result, Nothing)
+           
+
+            
+            if result == nothing
                 cell["outputs"] = []
             elseif isa(result, Question)
                 # shove in an empty cell
                 cell["input"] = ""
                 cell["outputs"] = []
+            elseif isa(result, Plots.Plot)
+                tmp = tempname()
+                io = open(tmp, "w")
+                writemime(io, MIME("image/png"), result)
+                close(io)
+
+                dpi = 120
+                cell["outputs"] = [Dict(
+                                        "output_type" => "execute_result",
+                                        "execution_count" => nothing,
+                                       "data" => Dict("text/plain" => "Plot(...)",
+                                                      "image/png" => base64encode(readall(tmp))
+                                                      ),
+                                       "metadata" => Dict("image/png" => Dict("width"=>5*dpi, "height"=>4*dpi))  
+                                       )]
             elseif isa(result, Verbatim) 
                 "Do not execute input, show as is"
 #                cell["input"] = result.x
@@ -209,14 +239,14 @@ function mdToPynb(fname::String)
                 catch e
                 end
                 tmp["data"] = Dict()
-                tmp["data"][outtype] = [output]
+                tmp["data"][outtype] = collect(output)
                 
                 cell["outputs"] = [tmp]
             end
             
         else
             cell["cell_type"] = "markdown"
-            BigHeader = Union(Markdown.Header{1},Markdown.Header{2})
+            BigHeader = Union{Markdown.Header{1},Markdown.Header{2}}
             if isa(out.content[i], Markdown.Header)
                 d = Dict()
                 d["internals"] = Dict()
@@ -229,8 +259,13 @@ function mdToPynb(fname::String)
                 d["slideshow"]["slide_type"] = isa(out.content[i], BigHeader) ? "slide" : "subslide"
                 cell["metadata"] = d
             end
+
+            result = out.content[i]
+            println("process"); println(result); println(bestmime(result)); println("----")
             
-            cell["source"] = sprint(io -> tohtml(io, out.content[i]))
+            
+
+            cell["source"] = sprint(io -> Markdown.html(io, out.content[i]))
         end
 
         push!(newblocks, JSON.json(cell))
@@ -238,7 +273,7 @@ function mdToPynb(fname::String)
     
 
     ## return string
-    Mustache.render(ipynb_tpl, {"TITLE" => "TITLE", "CELLS" => join(newblocks, ",\n")})
+    Mustache.render(ipynb_tpl, Dict("TITLE" => "TITLE", "CELLS" => join(newblocks, ",\n")))
 
    
 end
