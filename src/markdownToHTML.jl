@@ -160,7 +160,7 @@ function mdToHTML(fname::AbstractString; TITLE="", kwargs...)
     added_gadfly_preamble = false
     
     process_block("using WeavePynb, LaTeXStrings", m)
-    out = Markdown.parse_file(fname)
+    out = Markdown.parse_file(fname, flavor=Markdown.julia)
     for i in 1:length(out.content)
         println(out.content[i])
         if isa(out.content[i], Markdown.Code)
