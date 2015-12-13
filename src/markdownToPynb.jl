@@ -63,7 +63,7 @@ function render_gadfly(img)
     open(imgfile, "w") do io
         draw(PNG(io, 5inch, inch), img)
     end
-    data = readall(`julia4 -e "base64encode(readall(\"$imgfile\")) |> print"`);
+    data = base64encode(readall(imgfile))
     
     out = Dict()
 #    out["metadata"] = Dict()

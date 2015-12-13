@@ -8,7 +8,8 @@ function pandoc(infn, infmt::String, outfmt::String, args::String...)
         push!(cmd, arg)
     end
 
-    readall(infn |> Cmd(cmd))
+    readall(infn, Cmd(cmd))
+#    readall(pipeline(infn, Cmd(cmd)))
 end
 
 """

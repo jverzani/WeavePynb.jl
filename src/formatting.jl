@@ -157,9 +157,9 @@ popup(x; title=" ", icon="share-alt", label=" ") = Popup(x, title, icon, label)
 popup_html_tpl=mt"""
 <button type="button" class="btn btn-sm" aria-label="Left Align"
   data-toggle="popover"
-  title="{{{title}}}"
+  title='{{{title}}}'
   data-html=true
-  data-content="{{{body}}}"
+  data-content='{{{body}}}'
 >
   <span class="glyphicon glyphicon-{{icon}}" aria-hidden="true"></span>{{#button_label}} {{{button_label}}}{{/button_label}}
 </button>
@@ -172,6 +172,7 @@ function Base.writemime(io::IO, ::MIME"text/html", x::Popup)
     label = sprint(io -> writemime(io, "text/html", Markdown.parse(x.label)))
     d["button_label"] = strip_p(label)
     d["body"] = sprint(io -> writemime(io, "text/html", Markdown.parse(x.x)))
+    println(d)
     Mustache.render(io, popup_html_tpl, d)
 end
 

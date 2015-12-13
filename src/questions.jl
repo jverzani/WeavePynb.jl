@@ -33,7 +33,7 @@ end
 type Radioq <: Question
     choices::Vector
     answer::Int
-    reminder::AbstractString
+    reminder
     answer_text::MaybeString
     values
     labels
@@ -105,7 +105,7 @@ radioq(["beta", L"\beta", "`beta`"], 2, hint="which is the Greek symbol")
 function radioq(choices, answer, reminder="", answer_text=nothing;  hint::AbstractString="", inline::Bool=(hint!=""),
                 keep_order::Bool=false)
     values = join(1:length(choices), " | ")
-    labels = map(markdown_to_latex,choices) |> x -> map(chomp, x) |> x -> join(x, " | ")
+    labels = map(markdown_to_latex,choices) |> x -> map(chomp, x) ##|> x -> join(x, " | ")
     ind = collect(1:length(choices))
     !keep_order && shuffle!(ind)
     
@@ -316,7 +316,8 @@ function markdown(x)
     length(x) == 0 && return("")
     x = Markdown.parse(x)
     x = sprint(io -> WeavePynb.tohtml(io, x))
-    x[4:end-4]                  # strip out <p></p>
+#    x[4:end-4]                  # strip out <p></p>
+x
 end
 
 
@@ -335,8 +336,7 @@ function writemime(io::IO, m::MIME"text/html", x::Radioq)
 
 
 choices = map(string, x.choices)
-println(x.choices)
-println(choices)
+
     items = Dict[]
     ## make items
     for i in 1:length(choices)
