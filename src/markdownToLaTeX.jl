@@ -1,254 +1,226 @@
+using LaTeXStrings
+using Mustache
+
 ## utils
-# Super-simple pandoc interface.
-function pandoc(infn, infmt::String, outfmt::String, args::String...)
-    cmd = ByteString["pandoc",
-                     "--from=$(infmt)",
-                     "--to=$(outfmt)"]
-    for arg in args
-        push!(cmd, arg)
+
+
+
+
+latex_tpl = mt"""
+\documentclass[12pt]{article}
+\usepackage[fleqn]{amsmath}     %puts eqns to left, not centered
+\usepackage{fancyvrb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{geometry}
+\begin{document}
+{{{txt}}}
+\end{document}
+"""
+
+## Main function to take a jmd file and turn into a latex questions file
+function markdownToLaTeX(fname::AbstractString)
+    dirnm, basenm = dirname(fname), basename(fname)
+    basenm = replace(basenm, r"\.md$", "")
+    newnm = basenm * ".tex"
+
+    if !isdir(basenm)
+        println("mkdir $basenm")
+        mkdir(basenm)
     end
 
-    readall(infn, Cmd(cmd))
-#    readall(pipeline(infn, Cmd(cmd)))
-end
+    out = mdToLaTeX(fname, basenm)
 
-"""
-Take a string in markdown and covert to LaTeX via pandoc
-"""
-function markdown_to_latex(txt)
-    infn = tempname() * ".md"
-    io = open(infn, "w"); print(io, txt); close(io)
-    out = pandoc(infn, "markdown", "latex")
-    rm(infn)
-    out
-end
-
-
-## Need to iron this out how to do questions so taht we have them in both latex and not.
-
-
-
-## turn jmd file into latex
-function markdownToLaTex(fname::String)
-    dirnm, basenm = dirname(fname), basename(fname)
-    newnm = replace(fname, r"[.].*", ".tex")
-    out = mdToLatex(readall(fname))
-
-    io = open(newnm, "w")
+    
+    
+    io = open(joinpath(basenm, newnm), "w")
     write(io, out)
     close(io)
 end
-  
 
-## Main function to take a jmd file and turn into a ipynb file
+function code_input(buf, txt)
+    println(buf, "\\begin{Verbatim}[frame=leftline]")
+    println(buf, txt)
+    println(buf, "\\end{Verbatim}")
+end
 
 
-# A special module in which a documents code is executed.
-module WeaveSandbox
-   ## inject some functions
-   using Mustache
+function code_output(buf, txt)
+    println(buf, "\\begin{Verbatim}[fontshape=it]")
+    println(buf, txt)
+    println(buf, "\\end{Verbatim}")
+end
 
-numericq_tpl = """
-\\begin{answer}
-    type: numeric
-    reminder: {{{reminder}}}
-    answer: [{{m}}, {{M}}]
-{{#answer_text}}answer_text: {{{answer_text}}} {{/answer_text}}
-\\end{answer}
 """
 
-radioq_tpl = """
-\\begin{answer}
-type: radio
-reminder: {{{reminder}}}
-values: {{{choices}}}
-labels: {{{choices}}}
-answer: {{{answer}}}
-{{#answer_text}}answer_text: {{{answer_text}}} {{/answer_text}}
-\\end{answer}
+Parses a markdown file into a ipynb file
+
+Tries to handle graphics, but isn't perfect:
+
+* Winston graphics work as expected
+
+* PyPlot graphics have idiosyncracies:
+
+- basic usage requires a call of `gcf()` as last entry of  a cell. This will *also* call clear on the figure, so that 
+any subsequent figures are added to a new canvas
+
+- for 3d usage, this is not the case. The 3d graphics use a different backend and the display is different.
+
+* `Gadfly` graphics are not (yet) supported, though this should be addressed .
+
 """
 
+function mdToLaTeX(fname::AbstractString, outdir)
 
-multiq_tpl = """
-\\begin{answer}
-type: checkbox
-reminder: {{{reminder}}}
-values: {{{values}}}
-labels: {{{labels}}}
-answer: {{{answer}}}
-\\end{answer}
-"""
-
-
-shortq_tpl = """
-\\begin{answer}
-type: shorttext
-reminder: {{{reminder}}}
-answer: {{{answer}}}
-{{#answer_text}}answer_text: {{{answer_text}}} {{/answer_text}}
-\\end{answer}
-"""
-
-longq_tpl = """
-\\begin{answer}
-type: longtext
-reminder: {{{reminder}}}
-{{#answer_text}}answer_text: {{{answer_text}}} {{/answer_text}}
-rows: {{{rows}}}
-cols: {{{cols}}}
-\\end{answer}
-"""
-
-type Question
-    x
-end
-
-function numericq(val, tol=1e-3, reminder="", answer_text=nothing)
-    Question(Mustache.render(numericq_tpl, {"reminder"=>reminder,
-                                   "answer_text"=>answer_text,
-                                   "m"=>val-tol,
-                                   "M"=>val+tol
-                                   }))
-end
-
-
-function radioq(choices, answer, reminder="", answer_text=nothing)
-    Question(Mustache.render(radioq_tpl, {"reminder"=>reminder,
-                                  "answer_text"=>answer_text,
-                                  "values" => join(1:length(choices), " | "),
-                                  "labels" => join(choices, " | "),
-                                  "answer" => answer
-                                  }))
-end
-booleanq(ans::Bool, reminder="", answer_text=nothing) = radioq(["True", "False"], 2 - int(ans), reminder, answer_text)
-
-## multi choice
-function multiq(choices, answer, reminder="", answer_text=nothing)
-    Question(Mustache.render(multiq_tpl, {"reminder"=>reminder,
-                                  "answer_text"=>answer_text,
-                                  "values" => join(1:length(choices), " | "),
-                                  "labels" => join(choices, " | "),
-                                  "answer" => join(answer, " | ")
-                                  }))
-end
-
-function shortq(answer, reminder="", answer_text=nothing)
-    Question(Mustache.render(shortq_tpl, {"reminder"=>reminder,
-                                          "answer_text"=>answer_text,
-                                          "answer" => answer
-                                          }))
-end
-
-function longq(reminder="", answer_text=nothing;rows=3,cols=60)
-    Question(Mustache.render(longq_tpl, {"reminder"=>reminder,
-                                         "answer_text"=>answer_text,
-                                         "rows" => rows,
-                                         "cols" => cols
-                                         }))
-end
-
-
-    # Output
-    MIME_OUTPUT = Array(Tuple, 0)
-    emit(mime, data) = push!(MIME_OUTPUT, (mime, data))
-end
-
-# An iterator for the parse function: parsit(source) will iterate over the
-# expressiosn in a string.
-type ParseIt
-    value::String
-end
-
-## iterate over (cmd, expr)
-parseit(value::String) = ParseIt(value)
-
-import Base: start, next, done
-start(it::ParseIt) = 1
-function next(it::ParseIt, pos)
-    (ex,newpos) = Base.parse(it.value, pos)
-    ((it.value[pos:(newpos-1)], ex), newpos)
-end
-done(it::ParseIt, pos) = pos > length(it.value)
-
-
-# Execute a block of julia code, capturing its output.
-function execblock_julia(source)
-    out = Any[]
-
-    for (cmd, expr) in parseit(strip(source))
-        result = try 
-            eval(WeaveSandbox, expr) 
-        catch e
-            println("Error with $cmd")
-        end
-        push!(out, (cmd, expr, result))
-    end
-    
-
-    if length(WeaveSandbox.MIME_OUTPUT) > 0
-        mime, output = pop!(WeaveSandbox.MIME_OUTPUT)
-        mime, convert(Vector{Uint8}, output), out
-    end
-
-    out #[(txt, expr, output)]
-end
-
-
-
-function mdToLatex(infn::String)
-    metadata, document = JSON.parse(pandoc(infn, :markdown, :json))
-
+    m = make_module()
     buf = IOBuffer()
-    println(buf, """
-\\documentclass[12pt]{article}
-\\usepackage[fleqn]{amsmath}     %puts eqns to left, not centered
-\\usepackage{graphicx}
-\\usepackage{hyperref}
-\\begin{html}
-<style>
-pre {font-size: 1.2em; background-color: #EEF0F5;}
-ul li {list-style-image: url(http://www.math.csi.cuny.edu/static/images/julia.png);}  
-</style>
-\\end{html}
-\\begin{document}
-""")
- 
-    for block in document
-        cell = Dict()
-        cell["metadata"] = Dict()
 
-        if isa(block, Dict) && haskey(block, "CodeBlock")
-            if length(block["CodeBlock"][1][2]) > 0 && block["CodeBlock"][1][2][1] == "julia"
-                input = block["CodeBlock"][2]
-                println("\nProcessing: $input")
-                out = execblock_julia(input)
-                input = out[end][3]
-                println(buf, input)
+    process_block("using WeavePynb, LaTeXStrings", m)
+    out = Markdown.parse_file(fname, flavor=Markdown.julia)
+    for i in 1:length(out.content)
+        println("processing $i ...")
+        println(out.content[i])
+        println("...")
+        if isa(out.content[i], Markdown.Code)
+            ## Code Blocks are evaluated and their last value is added to the output
+            ## If the value is of type Question, the we display differently
+
+            txt = out.content[i].code
+            lang = out.content[i].language
+
+            ## we need to set
+            ## nocode, noeval, noout
+            langs = map(lstrip, split(lang, ","))
+            
+            docode, doeval, doout = true, true, true
+            if "nocode" in langs
+                docode = false
+            end
+            if "verbatim" in langs || "noeval" in langs
+                doeval, doout = false, false
+            end
+            if "noout" in langs
+                doout = false
+            end
+            
+            
+            ## language is used to pass in arguments
+            result = nothing
+            if doeval
+                result = process_block(txt, m)
+            end
+
+            !docode && (txt = "")
+
+            
+#            txt = out.content[i].code
+#            result = process_block(txt, m)
+            ## special cases: questions and graphical output
+            if result == nothing
+                code_input(buf, txt)
+            elseif isa(result, Question)
+                println(buf, "     ")
+#                writemime(buf, "application/x-latexq", result)
+            elseif string(typeof(result)) == "FramedPlot"
+                ## Winston graphics
+                println("Handle winston graphics")
+                code_input(buf, txt)
+                
+            elseif  string(typeof(result)) == "Plot"
+                println("Handle gadfly graphics")
+                code_input(buf, txt)                
+
+                imgnm = randstring() * ".png"
+                png(result, joinpath(outdir, imgnm))
+
+                println(buf, """\\n\\includegraphics{$imgnm}\\n""")
+                
+            elseif string(typeof(result)) == "Figure"
+                println("Handler PyPlot graphics")
+                code_input(buf, txt)                                
+
+            elseif isa(result, Plots.Plot)
+                code_input(buf, txt)                                                
+
+                imgnm = randstring() * ".png"
+                png(result, joinpath(outdir, imgnm))
+                println("write to $imgnm")
+                println(buf, """\\includegraphics[width=0.8\\textwidth]{$imgnm}""")
+                println(buf, " ")
             else
-                input = block["CodeBlock"][2]
-                if length(input) > 0
-                    println(buf, "\n")
-                    println(buf, "\\begin{verbatim}")
-                    println(buf, input)
-                    println(buf, "\\end{verbatim}")
+                if length(txt) > 0
+                    mtype =  bestmime(result)
+                    outtype = ifelse(ismatch(r"latex", string(mtype)), "latex", "text")
+                    code_input(buf, txt)
+                    if string(WeavePynb.bestmime(result)) == "text/plain"
+                      println(buf, "\\begin{Verbatim}[fontshape=it]")                
+                      writemime(buf, mtype, result)
+                      println(buf, "")
+                        println(buf, "\\end{Verbatim}")
+                    println(buf, " ")
+                    else
+                      writemime(buf, mtype, result)
+                    end
                 end
             end
+            
         else
-            processed_document = [block]
-            jsonout_path, jsonout = mktemp()
-            JSON.print(jsonout, {metadata, processed_document})
-            flush(jsonout)
-            close(jsonout)
-            output = pandoc(readall(jsonout_path), :json, :latex)
-            rm(jsonout_path)
-            println(buf, output)
+            try
+                ## Headers...
+                println(buf, header(out.content[i]))
+                println(buf, "")
+            catch e
+                tmp = IOBuffer()
+                #                [Markdown.print_inline(tmp, content) for content in out.content[i].content]
+                writemime(tmp, "text/latex", out.content[i])
+                txt = takebuf_string(tmp)
+                println(ismatch(r"newline", txt))
+                txt = replace(txt, "\\newline", "")
+                println("~~~~")
+                println(txt)
+                println("~~~~")                
+                txt = replace(txt, "<br/>", "\\newline") # hack for newlines...
+                println(buf, txt) #markdown_to_latex(txt))
+                println(buf, "")
+            end
         end
     end
     
-     println(buf,"""
-\\end{document}
-""")
- 
-    takebuf_string(buf)
-   
+    txt = takebuf_string(buf)
+    ## return string
+    Mustache.render(latex_tpl, Dict("TITLE" => "TITLE", "txt" => txt))
 end
+
+
+
+
+"""
+  Helper function to allow the md file to be a Mustache template.
+  Expects a file `fname.jl` which defines a module `fname`.
+
+  XXX Needs work XXX
+"""
+function mmd_to_latexq(fname::AbstractString; force::Bool=false, kwargs...)
+    bname = basename(fname)
+    ismatch(r"\.mmd$", bname) || error("this is for mmd template files")
+    bname = replace(bname, r"\.mmd$", "")
+
+    jl = replace(fname,".mmd",".jl")
+    tex = replace(fname,".mmd",".tex")
+    mmd = fname
+    md = "$bname.md"
+    
+    ## do this only if html file older than either .mmd or .jl
+    if force || (!isfile(tex) || (mtime(mmd) > mtime(tex)) | (mtime(jl) > mtime(tex)))
+        include("$bname.jl")
+
+        tpl = Mustache.template_from_file(fname)
+    
+        io = open(md, "w")
+        write(io, Mustache.render(tpl, Main.(symbol(bname))))
+        close(io)
+
+        markdownToLaTeXQ(md; kwargs...)
+    end
+end
+export mmd_to_latexq

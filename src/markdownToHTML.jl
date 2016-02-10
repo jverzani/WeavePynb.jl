@@ -41,7 +41,6 @@ Markdown idiosyncracies:
 
 """
 function mdToHTML(fname::AbstractString; TITLE="", kwargs...)
-
     m = make_module()
     safeeval(m, parse("using LaTeXStrings"))
     safeeval(m, parse("macro q_str(x)  \"`\$x`\" end"))
@@ -206,27 +205,11 @@ end
   XXX Needs work XXX
 """
 function mmd_to_html(fname::AbstractString; kwargs...)
+    mmd_to_md(fname)
+
     bname = basename(fname)
-    ismatch(r"\.mmd$", bname) || error("this is for mmd template files")
     bname = replace(bname, r"\.mmd$", "")
-
-    jl = replace(fname,".mmd",".jl")
-    hml = replace(fname,".mmd",".html")
-    mmd = fname
-
-    
-    ## do this only if html file older than either .mmd or .jl
-    if !isfile(hml) || (mtime(mmd) > mtime(hml)) | (mtime(jl) > mtime(hml))
-        include("$bname.jl")
-
-        tpl = Mustache.template_from_file(fname)
-    
-        io = open("$bname.md", "w")
-        write(io, Mustache.render(tpl, Main.(symbol(bname))))
-        close(io)
-
-        markdownToHTML("$bname.md"; kwargs...)
-    end
+    markdownToHTML("$bname.md"; kwargs...)
 end
 export mmd_to_html
 

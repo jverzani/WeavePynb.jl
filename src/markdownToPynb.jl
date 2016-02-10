@@ -127,7 +127,7 @@ function mdToPynb(fname::AbstractString)
     added_gadfly_preamble = false
 
     process_block("using WeavePynb, LaTeXStrings", m)
-    out = Markdown.parse_file(fname)
+    out = Markdown.parse_file(fname,  flavor=Markdown.julia)
     for i in 1:length(out.content)
         cell = Dict()
         cell["metadata"] = Dict()
@@ -141,14 +141,42 @@ function mdToPynb(fname::AbstractString)
             ## this is different from IJulia, but similar.
             ## There are issues with Gadfly graphics (need the script...)
             ## and PyPlot, where we need an invocation to manage the figures
-            
-            txt = out.content[i].code
+
+
+ txt = out.content[i].code
             lang = out.content[i].language
-            if lang == "" || lang == "j" || lang == "julia"
-                result = process_block(txt, m)
-            else
-                result = nothing
+
+            ## we need to set
+            ## nocode, noeval, noout
+            langs = map(lstrip, split(lang, ","))
+            
+            docode, doeval, doout = true, true, true
+            if "nocode" in langs
+                docode = false
             end
+            if "verbatim" in langs || "noeval" in langs
+                doeval, doout = false, false
+            end
+            if "noout" in langs
+                doout = false
+            end
+            
+            
+            ## language is used to pass in arguments
+            result = nothing
+            if doeval
+                result = process_block(txt, m)
+            end
+
+            !docode && (txt = "")            
+
+            ## txt = out.content[i].code
+            ## lang = out.content[i].language
+            ## if lang == "" || lang == "j" || lang == "julia"
+            ##     result = process_block(txt, m)
+            ## else
+            ##     result = nothing
+            ## end
 
             
             cell["cell_type"] = "code"
@@ -160,14 +188,17 @@ function mdToPynb(fname::AbstractString)
             
 
            
-
+            println("Type of result: $(typeof(result))")
             
             if result == nothing
                 cell["outputs"] = []
             elseif isa(result, Question)
+                println("Process a question...")
+                continue
                 # shove in an empty cell
-                cell["input"] = ""
+#                cell["input"] = ""
                 cell["outputs"] = []
+                cell["source"] = []
             elseif isa(result, Plots.Plot)
                 tmp = tempname()
                 io = open(tmp, "w")

@@ -67,14 +67,15 @@ end
 ## end
 
 function writemime{l}(io::IO, mime::MIME"text/latex", header::Markdown.Header{l})
+    txt = join(header.text)
     if l == 1 
-        print(io, "\\section{$(header.text)}")
+        print(io, "\\section{$(txt)}")
     end
     if l == 2
-        print(io, "\\subsection{$(header.text)}")
+        print(io, "\\subsection{$(txt)}")
     end
     if l > 2
-        print(io, "\\subsubsection{$(header.text)}")
+        print(io, "\\subsubsection{$(txt)}")
     end
 end
 
@@ -89,12 +90,12 @@ println((code.code, is_blockcode(code)))
       print(io, code.code)
     end
   else
-    print(io, "\\textt{$(code.code)}")
+    print(io, "\\texttt{$(code.code)}")
   end
 end
 
 #function writemime(io::IO, ::MIME"text/latex", code::Markdown.InlineCode)
-#    print(io, "\\textt{$(code.code)}")
+#    print(io, "\\texttt{$(code.code)}")
 #end
 
 function writemime(io::IO, ::MIME"text/latex", md::Markdown.Paragraph)
@@ -106,7 +107,9 @@ end
 
 function writemime(io::IO, ::MIME"text/latex", md::Markdown.BlockQuote)
   with_environment(io, "quotation") do
-    writemime(io, "text/latex", Markdown.Block(md.content))
+    for item in md.content
+        writemime(io, "text/latex", item)
+    end
   end
 end
 
@@ -126,11 +129,11 @@ end
 ## end
 
 function writemime(io::IO, ::MIME"text/latex", md::Markdown.Bold)
-    print(io, "\\textbf{$(md.text)}")
+    print(io, "\\textbf{$(join(md.text))}")
 end
 
 function writemime(io::IO, ::MIME"text/latex", md::Markdown.Italic)
-    print(io, "\\textit{$(md.text)}")
+    print(io, "\\textit{$(join(md.text))}")
 end
 
 function writemime(io::IO, ::MIME"text/latex", md::Markdown.Image)
@@ -138,7 +141,39 @@ function writemime(io::IO, ::MIME"text/latex", md::Markdown.Image)
 end
 
 function writemime(io::IO, ::MIME"text/latex", md::Markdown.Link)
-    print(io, "\\url{$(md.url)}{$(md.text)}")
+    print(io, "\\href{$(md.url)}{$(join(md.text))}")
+end
+
+
+function writemime(io::IO, ::MIME"text/latex", md::Markdown.LaTeX)
+  ## Hack, we use $$~ ~$$ to mark these up, so if we see ~..~ wrapping
+  ## we add in ...
+  txt = md.formula
+  if ismatch(r"^~.*", txt)
+    print(io, "\n")
+    writemime(io, "text/latex", L"$$")
+    writemime(io, "text/latex",  txt[2:(end-1)])
+    writemime(io, "text/latex", L"$$")
+    print(io, "\n")
+  else
+    writemime(io, "text/plain", md)
+  end
+end
+
+
+function writemime(io::IO, ::MIME"text/html", md::Markdown.LaTeX)
+  ## Hack, we use $$~ ~$$ to mark these up, so if we see ~..~ wrapping
+  ## we add in ...
+  txt = md.formula
+  if ismatch(r"^~.*", txt)
+    print(io, "\n")
+    writemime(io, "text/latex", L"$$")
+    writemime(io, "text/latex",  txt[2:(end-1)])
+    writemime(io, "text/latex", L"$$")
+    print(io, "\n")
+  else
+    writemime(io, "text/plain", md)
+  end
 end
 
 

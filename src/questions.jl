@@ -104,12 +104,18 @@ radioq(["beta", L"\beta", "`beta`"], 2, hint="which is the Greek symbol")
 """
 function radioq(choices, answer, reminder="", answer_text=nothing;  hint::AbstractString="", inline::Bool=(hint!=""),
                 keep_order::Bool=false)
-    values = join(1:length(choices), " | ")
-    labels = map(markdown_to_latex,choices) |> x -> map(chomp, x) ##|> x -> join(x, " | ")
-    ind = collect(1:length(choices))
-    !keep_order && shuffle!(ind)
+    inds = collect(1:length(choices))
+    values = inds
+    labels = choices # map(markdown_to_latex,choices) |> x -> map(chomp, x) ##|> x -> join(x, " | ")
+    !keep_order && shuffle!(inds)
+
+    println("~~~~")
+    println(choices)
+    println(values)
+    println(labels)
+
     
-    Radioq(choices[ind], findfirst(ind, answer), reminder, answer_text, values[ind], labels[ind], hint, inline)
+    Radioq(choices[inds], findfirst(inds, answer), reminder, answer_text, values[inds], labels[inds], hint, inline)
 end
 
 """
@@ -171,11 +177,11 @@ latex_templates["Numericq"] = mt"""
 latex_templates["Radioq"] = mt"""
 \\begin{answer}
 type: radio
-reminder: {{{reminder}}}
-values: {{{values}}}
-labels: {{{labels}}}
-answer: {{{answer}}}
-{{#answer_text}}answer_text: {{{answer_text}}} {{/answer_text}}
+reminder: {{{:reminder}}}
+values: {{{:values}}}
+labels: {{{:labels}}}
+answer: {{{:answer}}}
+{{#:answer_text}}answer_text: {{{:answer_text}}} {{/:answer_text}}
 \\end{answer}
 """
 
@@ -211,8 +217,20 @@ cols: {{{cols}}}
 \\end{answer}
 """
 
+
+function writemime(io::IO, m::MIME"application/x-latexq", x::Radioq)
+    Mustache.render(io, latex_templates["Radioq"],
+                    Dict(:reminder=>x.reminder,
+                         :values=> join(x.values, " | "),
+                         :labels=> join(x.labels, " | "),
+                         :answer=> x.answer,
+                         :answer_text=> x.answer_text
+                         )
+                    )
+end
 function writemime(io::IO, m::MIME"application/x-latexq", x::Question)
-    Mustache.render(io, latex_templates[string(typeof(x))],x)
+    tof = split(string(typeof(x)), ".")[end]
+    Mustache.render(io, latex_templates[tof],x)
 end
 
 

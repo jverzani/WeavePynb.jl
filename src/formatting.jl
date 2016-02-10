@@ -125,8 +125,9 @@ function Base.writemime(io::IO, ::MIME"text/html", x::Example)
     nm = haskey(x.d,:nm) ? " <small>$(x.d[:nm])</small>" : ""
     txt = sprint(io -> writemime(io, "text/html", Markdown.parse(x.x)))
     tpl = """
-<div class="well">
- <strong>Example</strong>$nm$txt
+<div class="alert alert-danger" role="alert">
+  <span class="glyphicon glyphicon-th" aria-hidden="true"></span>
+  <span class="text-uppercase">example:</span>$nm$txt
 </div>
 """
     

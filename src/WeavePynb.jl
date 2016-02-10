@@ -19,15 +19,16 @@ include("markdown-additions.jl")
 include("questions.jl")
 include("formatting.jl")
 include("bootstrap.jl")
-
+include("mmdTomd.jl")
 include("markdownToPynb.jl")    # notebook for questions,
 include("markdownToHTML.jl")   # for making webpages
 include("markdownToLaTeXQ.jl")  # for CSI questions, not of more general usage
-#include("markdownToLaTeX.jl")
+include("markdownToLaTeX.jl")
 
 export markdownToPynb 
 export markdownToHTML
 export markdownToLaTeXQ
+export markdownToLaTeX
 
 export Verbatim, Invisible, Outputonly, ImageFile, HTMLonly
 export alert, warning, note
