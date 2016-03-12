@@ -1,3 +1,12 @@
+"""
+
+Convert XXX.mmd + XXX.jl into a XXX.md file.
+This allows values in XXX.jl to be inserted into the mustache template XXX.mmd to
+dynamically render an md file. Examples of use include randomizing questions, including fancy graphics, ...
+
+If converting into many formats this should only be run once, as otherwise the different formats will possible differences when randomization is involved.
+
+"""
 function mmd_to_md(fname::AbstractString; kwargs...)
 
     bname = basename(fname)

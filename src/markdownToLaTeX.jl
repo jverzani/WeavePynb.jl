@@ -9,6 +9,9 @@ using Mustache
 latex_tpl = mt"""
 \documentclass[12pt]{article}
 \usepackage[fleqn]{amsmath}     %puts eqns to left, not centered
+\usepackage{color}
+\definecolor{light-gray}{gray}{0.15}
+\definecolor{darker-gray}{gray}{0.05}
 \usepackage{fancyvrb}
 \usepackage{graphicx}
 \usepackage{hyperref}
@@ -39,14 +42,14 @@ function markdownToLaTeX(fname::AbstractString)
 end
 
 function code_input(buf, txt)
-    println(buf, "\\begin{Verbatim}[frame=leftline]")
+    println(buf, "\\begin{Verbatim}[framesep=1mm,frame=leftline,fontfamily=courier,formatcom=\\color{darker-gray}]")
     println(buf, txt)
     println(buf, "\\end{Verbatim}")
 end
 
 
 function code_output(buf, txt)
-    println(buf, "\\begin{Verbatim}[fontshape=it]")
+    println(buf, "\\begin{Verbatim}[framesep=3mm,frame=leftline, fontfamily=courier, fontshape=it,formatcom=\\color{darker-gray}]")
     println(buf, txt)
     println(buf, "\\end{Verbatim}")
 end
@@ -120,7 +123,7 @@ function mdToLaTeX(fname::AbstractString, outdir)
                 code_input(buf, txt)
             elseif isa(result, Question)
                 println(buf, "     ")
-#                writemime(buf, "application/x-latexq", result)
+                writemime(buf, "application/x-latex", result)
             elseif string(typeof(result)) == "FramedPlot"
                 ## Winston graphics
                 println("Handle winston graphics")
@@ -153,7 +156,7 @@ function mdToLaTeX(fname::AbstractString, outdir)
                     outtype = ifelse(ismatch(r"latex", string(mtype)), "latex", "text")
                     code_input(buf, txt)
                     if string(WeavePynb.bestmime(result)) == "text/plain"
-                      println(buf, "\\begin{Verbatim}[fontshape=it]")                
+                      println(buf, "\\begin{Verbatim}[framesep=3mm,frame=leftline, fontshape=it,formatcom=\\color{darker-gray}]")                
                       writemime(buf, mtype, result)
                       println(buf, "")
                         println(buf, "\\end{Verbatim}")

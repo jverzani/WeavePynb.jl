@@ -162,10 +162,10 @@ export numericq, radioq, booleanq, yesnoq, shortq, longq, multiq
 
 ## we have different display mechanisms based on the output type
 
-## application/x-latex
-latex_templates=Dict()
+## application/x-latexq
+latexq_templates=Dict()
 
-latex_templates["Numericq"] = mt"""
+latexq_templates["Numericq"] = mt"""
 \\begin{answer}
     type: numeric
     reminder: {{{reminder}}}
@@ -174,7 +174,7 @@ latex_templates["Numericq"] = mt"""
 \\end{answer}
 """
 
-latex_templates["Radioq"] = mt"""
+latexq_templates["Radioq"] = mt"""
 \\begin{answer}
 type: radio
 reminder: {{{:reminder}}}
@@ -186,7 +186,7 @@ answer: {{{:answer}}}
 """
 
 
-latex_templates["Multiq"] = mt"""
+latexq_templates["Multiq"] = mt"""
 \\begin{answer}
 type: checkbox
 reminder: {{{reminder}}}
@@ -198,7 +198,7 @@ answer: {{{answer}}}
 """
 
 
-latex_templates["Shortq"] =  mt"""
+latexq_templates["Shortq"] =  mt"""
 \\begin{answer}
 type: shorttext
 reminder: {{{reminder}}}
@@ -207,7 +207,7 @@ answer: {{{answer}}}
 \\end{answer}
 """
 
-latex_templates["Longq"] = mt"""
+latexq_templates["Longq"] = mt"""
 \\begin{answer}
 type: longtext
 reminder: {{{reminder}}}
@@ -219,7 +219,7 @@ cols: {{{cols}}}
 
 
 function writemime(io::IO, m::MIME"application/x-latexq", x::Radioq)
-    Mustache.render(io, latex_templates["Radioq"],
+    Mustache.render(io, latexq_templates["Radioq"],
                     Dict(:reminder=>x.reminder,
                          :values=> join(x.values, " | "),
                          :labels=> join(x.labels, " | "),
@@ -229,6 +229,54 @@ function writemime(io::IO, m::MIME"application/x-latexq", x::Radioq)
                     )
 end
 function writemime(io::IO, m::MIME"application/x-latexq", x::Question)
+    tof = split(string(typeof(x)), ".")[end]
+    Mustache.render(io, latexq_templates[tof],x)
+end
+
+##################################################
+## application/x-latex
+## questions for printed output of projects
+latex_templates=Dict()
+
+latex_templates["Numericq"] = mt"""
+\vspace{12pt}
+\noindent\textit{Enter a number:} \underline{\hspace{5cm}}
+\vspace{12pt}
+"""
+
+latex_templates["Radioq"] = mt"""
+\vspace{12pt}
+\noindent\textit{Make a selection:}
+\begin{enumerate}
+{{#labels}}\item {{{.}}} {{/labels}}
+\end{enumerate}
+\vspace{12pt}
+"""
+
+
+latex_templates["Multiq"] = mt"""
+\vspace{12pt}
+\noindent\textit{Make one or more selections:}
+\begin{enumerate}
+{{#labels}}\item {{{.}}} {{/labels}}
+\end{enumerate}
+\vspace{12pt}
+"""
+
+
+latex_templates["Shortq"] =  mt"""
+\vspace{12pt}
+\noindent\textit{A short answer:}
+\vspace{0.5in}
+"""
+
+latex_templates["Longq"] = mt"""
+\vspace{12pt}
+\textit{A short answer:}
+\vspace{2in}
+"""
+
+function writemime(io::IO, m::MIME"application/x-latex", x::Question)
     tof = split(string(typeof(x)), ".")[end]
     Mustache.render(io, latex_templates[tof],x)
 end

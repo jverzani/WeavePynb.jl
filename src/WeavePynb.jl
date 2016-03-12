@@ -25,6 +25,7 @@ include("markdownToHTML.jl")   # for making webpages
 include("markdownToLaTeXQ.jl")  # for CSI questions, not of more general usage
 include("markdownToLaTeX.jl")
 
+export mmd_to_md
 export markdownToPynb 
 export markdownToHTML
 export markdownToLaTeXQ
