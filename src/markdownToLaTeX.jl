@@ -145,7 +145,7 @@ function mdToLaTeX(fname::AbstractString, outdir)
             elseif isa(result, Plots.Plot)
                 code_input(buf, txt)                                                
 
-                imgnm = randstring() * ".png"
+                imgnm = "fig_" * randstring() * ".png"
                 png(result, joinpath(outdir, imgnm))
                 println("write to $imgnm")
                 println(buf, """\\includegraphics[width=0.8\\textwidth]{$imgnm}""")

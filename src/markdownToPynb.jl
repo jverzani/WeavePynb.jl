@@ -77,6 +77,23 @@ function render_gadfly(img)
     out
 end
 
+
+
+function render_plotly(img)
+    ## need a cell
+    info("render plotly")
+    imgfile = tempname()
+    png(img, imgfile)
+    data = base64encode(readall(imgfile))
+    
+    out = Dict()
+    out["data"] = Dict()
+    out["data"]["image/png"] = data
+    out["data"]["text/plain"] = ["Plot(...)"]
+    out
+end
+
+
 function render_pyplot(img)
     info("render pyplot")
     out = Dict()
@@ -224,29 +241,20 @@ function mdToPynb(fname::AbstractString)
             elseif string(typeof(result)) == "FramedPlot"
                 ## Winston graphics
                 cell["outputs"] = [render_winston(result)]
-            elseif  string(typeof(result)) == "Plot"
-                ## Gadfly graphics
-                if !added_gadfly_preamble
-                    ## XXX this is *not* working, needed to figure out preamble... XXX
-                    ## Seems like injecting <script> failes.
-                    const gadfly_preamble = joinpath(dirname(@__FILE__), "..", "tpl", "gadfly-preamble.js")
-                    script = "<script>$(readall(gadfly_preamble))</script>"
-
-                    res = render_gadfly(result)
-#                    push!(res["data"]["image/svg+xml"], script)
-#                    preamble = Dict()
-#                    preamble["metadata"] = Dict()
-#                    preamble["output_type"] = "display_data"
-#                    preamble["html"] = [script]
-                    added_gadfly_preamble = true
-
-                    cell["outputs"] = [res]
-                else
+            elseif  isa(result, Plots.Plot)
+                if isa(result, Plots.Plot{Plots.GadflyBackend})                
+                    ## Gadfly graphics
+                    if !added_gadfly_preamble
+                        ## XXX this is *not* working, needed to figure out preamble... XXX
+                        ## Seems like injecting <script> failes.
+                        const gadfly_preamble = joinpath(dirname(@__FILE__), "..", "tpl", "gadfly-preamble.js")
+                        script = "<script>$(readall(gadfly_preamble))</script>"
+                        added_gadfly_preamble = true
+                    end
                     cell["outputs"] = [render_gadfly(result)]
-                    ##cell["outputs"] = []
+                elseif  isa(result, Plots.Plot{Plots.PlotlyBackend})
+                    cell["outputs"] = [render_plotly(result)]
                 end
-#                cell["output_type"] = "execute_reult"
-                
             elseif string(typeof(result)) == "Figure"
                 ## *basic* PyPlot graphics.
                 "Must do gcf() for last line"

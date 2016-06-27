@@ -105,7 +105,7 @@ radioq(["beta", L"\beta", "`beta`"], 2, hint="which is the Greek symbol")
 function radioq(choices, answer, reminder="", answer_text=nothing;  hint::AbstractString="", inline::Bool=(hint!=""),
                 keep_order::Bool=false)
     inds = collect(1:length(choices))
-    values = inds
+    values = copy(inds)
     labels = choices # map(markdown_to_latex,choices) |> x -> map(chomp, x) ##|> x -> join(x, " | ")
     !keep_order && shuffle!(inds)
 
@@ -115,7 +115,7 @@ function radioq(choices, answer, reminder="", answer_text=nothing;  hint::Abstra
     println(labels)
 
     
-    Radioq(choices[inds], findfirst(inds, answer), reminder, answer_text, values[inds], labels[inds], hint, inline)
+    Radioq(choices[inds], findfirst(inds, answer), reminder, answer_text, values, labels[inds], hint, inline)
 end
 
 """

@@ -117,18 +117,24 @@ function mdToHTML(fname::AbstractString; TITLE="", kwargs...)
                 txt = ""
                 doout && println(buf, gif_to_data(result.f, result.caption))
             elseif isa(result, Plots.Plot)
-                if isa(result, Plots.Plot{Plots.GadflyPackage})
-                     docode && length(txt) > 0 && println(buf, """<pre class="sourceCode julia">$txt</pre>""")
+                docode && length(txt) > 0 && println(buf, """<pre class="sourceCode julia">$txt</pre>""")
+                
+                if isa(result, Plots.Plot{Plots.GadflyBackend})
                      if !added_gadfly_preamble
                        ## XXX print out JavaScript
                       added_gadfly_preamble = true
                      end
-                     doout && writemime(buf, "text/html", result.o)
-                 else
-                      length(txt) > 0 && println(buf, """<pre class="sourceCode julia">$txt</pre>""")
-                      img = stringmime("image/png", result.o)
+                    doout && writemime(buf, "text/html", result.o)
+                elseif isa(result, Plots.Plot{Plots.PlotlyBackend})
+                    doout && write(buf, Plots.html_body(result))
+#                    doout && writemime(buf, "text/html", result)
+                else
+                    #                    img = stringmime("image/png", result.o)
+                    imgfile = tempname() * ".png"
+                    png(result, imgfile)
+                    img = base64encode(readall(imgfile))
                     doout && println(buf, """<img alt="Embedded Image" src="data:image/png;base64,$img">""")
-                 end
+                end
             elseif string(typeof(result)) == "FramedPlot"
                 length(txt) > 0 && println(buf, """<pre class="sourceCode julia">$txt</pre>""")
                 img = stringmime("image/png", result)
@@ -259,10 +265,12 @@ pre {display: block;}
 
 <style>{{{:style}}}</style>
 
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 
 
+<!-- not TeX-AMS-MML_HTMLorMML-->
 <script type="text/javascript"
-  src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+  src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_SVG">  
 </script>
 <script>
 MathJax.Hub.Config({
@@ -273,6 +281,7 @@ MathJax.Hub.Config({
   displayIndent: "5%"
 });
 </script>
+
 
 <script type="text/javascript">
 $( document ).ready(function() {
