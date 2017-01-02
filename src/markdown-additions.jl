@@ -90,7 +90,12 @@ println((code.code, is_blockcode(code)))
       print(io, code.code)
     end
   else
-    print(io, "\\texttt{$(code.code)}")
+    txt = code.code
+    txt = replace(txt, "^", "\\^{}")
+    txt = replace(txt, "_", "\\_{}")
+    txt = replace(txt, "#", "\\#")
+    txt = replace(txt, "@", "\\@")
+    print(io, "\\texttt{$(txt)}")
   end
 end
 
@@ -179,4 +184,8 @@ end
 
 function writemime{T <: AbstractString}(io::IO, ::MIME"text/latex", md::T)
    print(io, md)
+end
+
+function Base.writemime(io::IO, ::MIME"text/latex", x::Alert)
+print(io, "XXX")
 end

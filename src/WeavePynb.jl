@@ -1,4 +1,4 @@
-__precompile__(true)
+#__precompile__(true)
 module WeavePynb
 
 
@@ -15,9 +15,10 @@ using Base.Markdown
 
 include("evalit.jl")
 include("pandoc.jl")
-include("markdown-additions.jl")
 include("questions.jl")
 include("formatting.jl")
+include("markdown-additions.jl")
+
 include("bootstrap.jl")
 include("mmdTomd.jl")
 include("markdownToPynb.jl")    # notebook for questions,
@@ -35,5 +36,6 @@ export Verbatim, Invisible, Outputonly, ImageFile, HTMLonly
 export alert, warning, note
 export example, popup, table
 export gif_to_data
+
 
 end # module

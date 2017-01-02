@@ -58,7 +58,9 @@ function mdToLaTeXQ(fname::AbstractString)
     m = make_module()
     buf = IOBuffer()
 
-    process_block("using WeavePynb, LaTeXStrings", m)
+    process_block("using WeavePynb, LaTeXStrings, Plots; gr()", m) # pyplot
+    safeeval(m, parse("macro q_str(x)  \"\\\\verb@\$x@\" end"))
+
     out = Markdown.parse_file(fname, flavor=Markdown.julia)
     for i in 1:length(out.content)
         println("processing $i ...")

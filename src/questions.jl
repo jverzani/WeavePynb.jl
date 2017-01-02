@@ -74,32 +74,48 @@ end
 A numeric question graded with a tolerance
 
 Arguments:
+
 * `val::Real` answer
+
 * `tol::Real` tolerance. Answer is right if `|ans - val| <= tol`
+
 * `reminder` a reminder as to what question is, student may see
+
 * `answer_text`: reminder of what answer is, student does not see
+
 * `hint`: a possible hint for the student
+
 * `units`: a string holding the units, if specified.
 
 Returns an object of type `Question`.
+
+Example
+
+```
+numericq(10, 1e-3, "what is 5 + 5?", units="An integer")
+```
 """
 function numericq(val, tol=1e-3, reminder="", args...; hint::AbstractString="", units::AbstractString="")
-    answer_text= "[$(round(val-tol,3)), $(round(val+tol,3))]"
+    answer_text= "[$(round(val-tol,5)), $(round(val+tol,5))]"
     Numericq(val, tol, reminder, answer_text, val-tol, val+tol, units, hint)
 end
 
 numericq(val::Int; kwargs...) = numericq(val, 0; kwargs...)
+
 """
 Multiple choice question
 
 Arguments:
+
 * `choices`: vector of choices. 
+
 * `answer`: index of correct choice
+
 * `inline::Bool`: hint to render inline (or not) if supported
 
 Example
 ```
-radioq(["beta", L"\beta", "`beta`"], 2, hint="which is the Greek symbol")
+radioq(["beta", L"\beta", "`beta`"], 2, "a reminder", hint="which is the Greek symbol")
 ```
 """
 function radioq(choices, answer, reminder="", answer_text=nothing;  hint::AbstractString="", inline::Bool=(hint!=""),
@@ -109,17 +125,17 @@ function radioq(choices, answer, reminder="", answer_text=nothing;  hint::Abstra
     labels = choices # map(markdown_to_latex,choices) |> x -> map(chomp, x) ##|> x -> join(x, " | ")
     !keep_order && shuffle!(inds)
 
-    println("~~~~")
-    println(choices)
-    println(values)
-    println(labels)
-
-    
     Radioq(choices[inds], findfirst(inds, answer), reminder, answer_text, values, labels[inds], hint, inline)
 end
 
 """
-True of false questions
+True of false questions:
+
+Example:
+
+```
+booleanq(true, reminder="Does it hurt...")
+```
 
 """
 function booleanq(ans::Bool, reminder="", answer_text=nothing;labels::Vector=["true", "false"], hint::AbstractString="", inline::Bool=true) 
@@ -130,11 +146,13 @@ end
 
 """
 
-`yesnoq("yes")` or `yesnoq(true)`
+Boolean question with `yes` or `no` labels.
+
+Examples: `yesnoq("yes")` or `yesnoq(true)`
 
 """
-yesnoq(ans::AbstractString) = radioq(["Yes", "No"], ans == "yes" ? 1 : 2, keep_order=true)
-yesnoq(ans::Bool) = yesnoq(ans ? "yes" : "no")
+yesnoq(ans::AbstractString, args...; kwargs...) = radioq(["Yes", "No"], ans == "yes" ? 1 : 2, args...; keep_order=true, kwargs...)
+yesnoq(ans::Bool, args...; kwargs...) = yesnoq(ans ? "yes" : "no", args...;kwargs...)
 
 function multiq(choices, answer, reminder="", answer_text=nothing; hint::AbstractString="", inline::Bool=false)
     values = join(1:length, " | ")
@@ -147,10 +165,32 @@ function multiq(choices, answer, reminder="", answer_text=nothing; hint::Abstrac
            )
 end
 
+"""
+
+Short question, has regular expression grading:
+
+Example:
+
+```
+shortq("x^2", L"a expression using powers to compute x\cdot x")
+```
+
+Do not use format in answer part. The reminder defaults to an empty string.
+"""
 function shortq(answer, reminder="", answer_text=nothing;hint::AbstractString="")   
     Shortq(answer, reminder, answer_text, hint)
 end
 
+"""
+
+Long questions, not graded
+
+Example
+
+```
+longq("a reminder", "an answer for the grader to see")
+```
+"""
 function longq(reminder="", answer_text=nothing;hint::AbstractString="", rows=3, cols=60)    
     Longq(reminder, answer_text, hint, rows, cols)
 end
@@ -222,7 +262,7 @@ function writemime(io::IO, m::MIME"application/x-latexq", x::Radioq)
     Mustache.render(io, latexq_templates["Radioq"],
                     Dict(:reminder=>x.reminder,
                          :values=> join(x.values, " | "),
-                         :labels=> join(x.labels, " | "),
+                         :labels=> join(map(WeavePynb.markdown_to_latex, x.labels), " | "),
                          :answer=> x.answer,
                          :answer_text=> x.answer_text
                          )
@@ -266,14 +306,14 @@ latex_templates["Multiq"] = mt"""
 
 latex_templates["Shortq"] =  mt"""
 \vspace{12pt}
-\noindent\textit{A short answer:}
-\vspace{0.5in}
+\noindent\textit{Your answer:}
+\vspace{0.5in}\\
 """
 
 latex_templates["Longq"] = mt"""
 \vspace{12pt}
-\textit{A short answer:}
-\vspace{2in}
+\textit{Your answer:}
+\vspace{2in}\\
 """
 
 function writemime(io::IO, m::MIME"application/x-latex", x::Question)
@@ -433,7 +473,19 @@ end
 
 
 function writemime(io::IO, m::MIME"text/html", x::Question)
-     println(io, "Question type $(typeof(x)) is not supported in this format")
+     println(io, "<p>Question type $(typeof(x)) is not supported in this format</p>")
 end
 
+
+##
+## text/markdown
+md_templates=Dict()
+
+
+md_templates["Radioq"] = mt"""
+{{#:items}}
+{{{.}}}
+{{/:items}}
+
+"""
 

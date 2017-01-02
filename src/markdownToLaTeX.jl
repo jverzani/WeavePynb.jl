@@ -22,7 +22,7 @@ latex_tpl = mt"""
 """
 
 ## Main function to take a jmd file and turn into a latex questions file
-function markdownToLaTeX(fname::AbstractString)
+function markdownToLaTeX(fname::AbstractString, use_template=true)
     dirnm, basenm = dirname(fname), basename(fname)
     basenm = replace(basenm, r"\.md$", "")
     newnm = basenm * ".tex"
@@ -32,7 +32,7 @@ function markdownToLaTeX(fname::AbstractString)
         mkdir(basenm)
     end
 
-    out = mdToLaTeX(fname, basenm)
+    out = mdToLaTeX(fname, basenm, use_template)
 
     
     
@@ -73,12 +73,14 @@ any subsequent figures are added to a new canvas
 
 """
 
-function mdToLaTeX(fname::AbstractString, outdir)
+function mdToLaTeX(fname::AbstractString, outdir, use_template=true)
 
     m = make_module()
     buf = IOBuffer()
 
-    process_block("using WeavePynb, LaTeXStrings", m)
+    process_block("using WeavePynb, LaTeXStrings, Plots; gr()", m) #pyplot()
+    safeeval(m, parse("macro q_str(x)  \"\\\\verb@\$x@\" end"))
+    
     out = Markdown.parse_file(fname, flavor=Markdown.julia)
     for i in 1:length(out.content)
         println("processing $i ...")
@@ -159,9 +161,10 @@ function mdToLaTeX(fname::AbstractString, outdir)
                       println(buf, "\\begin{Verbatim}[framesep=3mm,frame=leftline, fontshape=it,formatcom=\\color{darker-gray}]")                
                       writemime(buf, mtype, result)
                       println(buf, "")
-                        println(buf, "\\end{Verbatim}")
-                    println(buf, " ")
-                    else
+                      println(buf, "\\end{Verbatim}")
+                      println(buf, " ")
+                else
+                    println("------>"); println(result)
                       writemime(buf, mtype, result)
                     end
                 end
@@ -191,7 +194,11 @@ function mdToLaTeX(fname::AbstractString, outdir)
     
     txt = takebuf_string(buf)
     ## return string
-    Mustache.render(latex_tpl, Dict("TITLE" => "TITLE", "txt" => txt))
+    if use_template
+        Mustache.render(latex_tpl, Dict("TITLE" => "TITLE", "txt" => txt))
+    else
+        txt
+    end
 end
 
 

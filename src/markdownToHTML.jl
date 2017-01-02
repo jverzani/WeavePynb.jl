@@ -42,7 +42,7 @@ Markdown idiosyncracies:
 """
 function mdToHTML(fname::AbstractString; TITLE="", kwargs...)
     m = make_module()
-    safeeval(m, parse("using LaTeXStrings"))
+    safeeval(m, parse("using LaTeXStrings, Plots; plotly()"))
     safeeval(m, parse("macro q_str(x)  \"`\$x`\" end"))
     buf = IOBuffer()
     added_gadfly_preamble = false
@@ -119,15 +119,16 @@ function mdToHTML(fname::AbstractString; TITLE="", kwargs...)
             elseif isa(result, Plots.Plot)
                 docode && length(txt) > 0 && println(buf, """<pre class="sourceCode julia">$txt</pre>""")
                 
-                if isa(result, Plots.Plot{Plots.GadflyBackend})
-                     if !added_gadfly_preamble
-                       ## XXX print out JavaScript
-                      added_gadfly_preamble = true
-                     end
-                    doout && writemime(buf, "text/html", result.o)
-                elseif isa(result, Plots.Plot{Plots.PlotlyBackend})
-                    doout && write(buf, Plots.html_body(result))
-#                    doout && writemime(buf, "text/html", result)
+                # if isa(result, Plots.Plot{Plots.GadflyBackend})
+                #      if !added_gadfly_preamble
+                #        ## XXX print out JavaScript
+                #       added_gadfly_preamble = true
+                #      end
+                #     doout && writemime(buf, "text/html", result.o)
+                # else
+                if isa(result, Plots.Plot{Plots.PlotlyBackend})
+                    Plots.prepare_output(result);
+                    doout && write(buf,  Plots.html_body(result))                    
                 else
                     #                    img = stringmime("image/png", result.o)
                     imgfile = tempname() * ".png"

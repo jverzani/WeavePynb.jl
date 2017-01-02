@@ -143,14 +143,15 @@ function mdToPynb(fname::AbstractString)
     newblocks = Any[]
     added_gadfly_preamble = false
 
-    process_block("using WeavePynb, LaTeXStrings", m)
+    process_block("using WeavePynb, LaTeXStrings, Plots; pyplot()", m)
+    safeeval(m, parse("macro q_str(x)  \"`\$x`\" end"))
+    
     out = Markdown.parse_file(fname,  flavor=Markdown.julia)
     for i in 1:length(out.content)
         cell = Dict()
         cell["metadata"] = Dict()
 ##        cell["prompt_number"] = i
 
-        
         if isa(out.content[i], Markdown.Code)
             println("==== Block Code ====")
             println(out.content[i])
@@ -160,7 +161,7 @@ function mdToPynb(fname::AbstractString)
             ## and PyPlot, where we need an invocation to manage the figures
 
 
- txt = out.content[i].code
+            txt = out.content[i].code
             lang = out.content[i].language
 
             ## we need to set
@@ -187,13 +188,6 @@ function mdToPynb(fname::AbstractString)
 
             !docode && (txt = "")            
 
-            ## txt = out.content[i].code
-            ## lang = out.content[i].language
-            ## if lang == "" || lang == "j" || lang == "julia"
-            ##     result = process_block(txt, m)
-            ## else
-            ##     result = nothing
-            ## end
 
             
             cell["cell_type"] = "code"
@@ -211,11 +205,18 @@ function mdToPynb(fname::AbstractString)
                 cell["outputs"] = []
             elseif isa(result, Question)
                 println("Process a question...")
-                continue
-                # shove in an empty cell
-#                cell["input"] = ""
-                cell["outputs"] = []
-                cell["source"] = []
+                if isa(result, WeavePynb.Radioq)
+                    # shove in an empty cell
+                    #                cell["input"] = ""
+#                    cell["outputs"] = []
+                    tmp = Mustache.render(md_templates["Radioq"], items=["&#10054; $i" for i in result.labels])
+                    cell["cell_type"] = "markdown"
+                    cell["source"] = tmp
+                    delete!(cell, "execution_count")
+                else
+                    continue
+                end
+                    
             elseif isa(result, Plots.Plot)
                 tmp = tempname()
                 io = open(tmp, "w")
@@ -226,7 +227,7 @@ function mdToPynb(fname::AbstractString)
                 cell["outputs"] = [Dict(
                                         "output_type" => "execute_result",
                                         "execution_count" => nothing,
-                                       "data" => Dict("text/plain" => "Plot(...)",
+                                        "data" => Dict("text/plain" => "Plot(...)",
                                                       "image/png" => base64encode(readall(tmp))
                                                       ),
                                        "metadata" => Dict("image/png" => Dict("width"=>5*dpi, "height"=>4*dpi))  
@@ -242,17 +243,18 @@ function mdToPynb(fname::AbstractString)
                 ## Winston graphics
                 cell["outputs"] = [render_winston(result)]
             elseif  isa(result, Plots.Plot)
-                if isa(result, Plots.Plot{Plots.GadflyBackend})                
-                    ## Gadfly graphics
-                    if !added_gadfly_preamble
-                        ## XXX this is *not* working, needed to figure out preamble... XXX
-                        ## Seems like injecting <script> failes.
-                        const gadfly_preamble = joinpath(dirname(@__FILE__), "..", "tpl", "gadfly-preamble.js")
-                        script = "<script>$(readall(gadfly_preamble))</script>"
-                        added_gadfly_preamble = true
-                    end
-                    cell["outputs"] = [render_gadfly(result)]
-                elseif  isa(result, Plots.Plot{Plots.PlotlyBackend})
+                # if isa(result, Plots.Plot{Plots.GadflyBackend})                
+                #     ## Gadfly graphics
+                #     if !added_gadfly_preamble
+                #         ## XXX this is *not* working, needed to figure out preamble... XXX
+                #         ## Seems like injecting <script> failes.
+                #         const gadfly_preamble = joinpath(dirname(@__FILE__), "..", "tpl", "gadfly-preamble.js")
+                #         script = "<script>$(readall(gadfly_preamble))</script>"
+                #         added_gadfly_preamble = true
+                #     end
+                #     cell["outputs"] = [render_gadfly(result)]
+                # else
+                    if  isa(result, Plots.Plot{Plots.PlotlyBackend})
                     cell["outputs"] = [render_plotly(result)]
                 end
             elseif string(typeof(result)) == "Figure"
