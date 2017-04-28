@@ -106,7 +106,7 @@ function mdToLaTeXQ(fname::AbstractString)
                 println(buf, "\\end{verbatim}")
             elseif isa(result, Question)
                 println(buf, "")
-                writemime(buf, "application/x-latexq", result)
+                show(buf, "application/x-latexq", result)
             elseif string(typeof(result)) == "FramedPlot"
                 ## Winston graphics
                 println("Handle winston graphics")
@@ -160,10 +160,10 @@ function mdToLaTeXQ(fname::AbstractString)
                     println(buf, "\\end{verbatim}")
                     if string(WeavePynb.bestmime(result)) == "text/plain"
                       println(buf, "\\begin{verbatim}")                
-                      writemime(buf, mtype, result)
+                      show(buf, mtype, result)
                       println(buf, "\\end{verbatim}")
                     else
-                      writemime(buf, mtype, result)
+                      show(buf, mtype, result)
                     end
                 end
             end
@@ -175,8 +175,8 @@ function mdToLaTeXQ(fname::AbstractString)
             catch e
                 tmp = IOBuffer()
                 #                [Markdown.print_inline(tmp, content) for content in out.content[i].content]
-                writemime(tmp, "text/latex", out.content[i])
-                txt = takebuf_string(tmp)
+                show(tmp, "text/latex", out.content[i])
+                txt = String(take!(tmp)) #takebuf_string(tmp)
                 println(txt)
                 txt = replace(txt, "<br/>", "\\newline") # hack for newlines...
                 print(buf, txt) #markdown_to_latex(txt))
@@ -184,7 +184,7 @@ function mdToLaTeXQ(fname::AbstractString)
         end
     end
     
-    txt = takebuf_string(buf)
+    txt = String(take!(buf)) #takebuf_string(buf)
     ## return string
     Mustache.render(latexq_tpl, Dict("TITLE" => "TITLE", "txt" => txt))
 end

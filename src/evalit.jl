@@ -48,13 +48,13 @@ end
 type DisplayError
     x
 end
-Base.writemime(io::IO, ::MIME"text/plain", e::DisplayError) = println(io, e.x)
-
+Base.show(io::IO, ::MIME"text/plain", e::DisplayError) = println(io, e.x)
 
 # Evaluate an expression and return its result and a string.
+safeeval(m, ex::Void) = nothing
 function safeeval(m, ex::Union{Number,Symbol, Expr})
     try
-        eval(m, ex)
+        res = eval(m, ex)
     catch e
         print_with_color(:red, "Error with evaluating $ex: $(string(e))\n")
         DisplayError(string(e))

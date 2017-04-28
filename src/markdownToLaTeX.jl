@@ -125,7 +125,7 @@ function mdToLaTeX(fname::AbstractString, outdir, use_template=true)
                 code_input(buf, txt)
             elseif isa(result, Question)
                 println(buf, "     ")
-                writemime(buf, "application/x-latex", result)
+                show(buf, "application/x-latex", result)
             elseif string(typeof(result)) == "FramedPlot"
                 ## Winston graphics
                 println("Handle winston graphics")
@@ -159,13 +159,13 @@ function mdToLaTeX(fname::AbstractString, outdir, use_template=true)
                     code_input(buf, txt)
                     if string(WeavePynb.bestmime(result)) == "text/plain"
                       println(buf, "\\begin{Verbatim}[framesep=3mm,frame=leftline, fontshape=it,formatcom=\\color{darker-gray}]")                
-                      writemime(buf, mtype, result)
+                      show(buf, mtype, result)
                       println(buf, "")
                       println(buf, "\\end{Verbatim}")
                       println(buf, " ")
                 else
                     println("------>"); println(result)
-                      writemime(buf, mtype, result)
+                      show(buf, mtype, result)
                     end
                 end
             end
@@ -178,8 +178,8 @@ function mdToLaTeX(fname::AbstractString, outdir, use_template=true)
             catch e
                 tmp = IOBuffer()
                 #                [Markdown.print_inline(tmp, content) for content in out.content[i].content]
-                writemime(tmp, "text/latex", out.content[i])
-                txt = takebuf_string(tmp)
+                show(tmp, "text/latex", out.content[i])
+                txt = String(take!(tmp)) #takebuf_string(tmp)
                 println(ismatch(r"newline", txt))
                 txt = replace(txt, "\\newline", "")
                 println("~~~~")
@@ -192,7 +192,7 @@ function mdToLaTeX(fname::AbstractString, outdir, use_template=true)
         end
     end
     
-    txt = takebuf_string(buf)
+    txt = String(take!(buf)) #takebuf_string(buf)
     ## return string
     if use_template
         Mustache.render(latex_tpl, Dict("TITLE" => "TITLE", "txt" => txt))
@@ -210,7 +210,7 @@ end
 
   XXX Needs work XXX
 """
-function mmd_to_latexq(fname::AbstractString; force::Bool=false, kwargs...)
+function mmd_to_latex(fname::AbstractString; force::Bool=false, kwargs...)
     bname = basename(fname)
     ismatch(r"\.mmd$", bname) || error("this is for mmd template files")
     bname = replace(bname, r"\.mmd$", "")
@@ -230,7 +230,7 @@ function mmd_to_latexq(fname::AbstractString; force::Bool=false, kwargs...)
         write(io, Mustache.render(tpl, Main.(symbol(bname))))
         close(io)
 
-        markdownToLaTeXQ(md; kwargs...)
+        markdownToLaTeX(md; kwargs...)
     end
 end
-export mmd_to_latexq
+export mmd_to_latex

@@ -51,7 +51,7 @@ function mdToHTML(fname::AbstractString; TITLE="", kwargs...)
     out = Markdown.parse_file(fname, flavor=Markdown.julia)
 
     for i in 1:length(out.content)
-        println(out.content[i])
+#        println(out.content[i])
         if isa(out.content[i], Markdown.Code)
             ## Code Blocks are evaluated and their last value is added to the output
             ## this is different from IJulia, but similar.
@@ -102,16 +102,16 @@ function mdToHTML(fname::AbstractString; TITLE="", kwargs...)
             elseif isa(result, HTMLoutput) 
                 "Do not execute input, show as is"
                 txt = ""
-                doout && writemime(buf, "text/plain", result)
+                doout && show(buf, "text/plain", result)
             elseif isa(result, Verbatim) 
                 "Do not execute input, show as is"
-                doout && writemime(buf, "text/plain", result)
+                doout && show(buf, "text/plain", result)
             elseif isa(result, Bootstrap)
                 "Show with Bootstrap formatting"
-                doout && writemime(buf, "text/html", result)
+                doout && show(buf, "text/html", result)
             elseif isa(result, Question)
                 "Show a question"
-                doout && writemime(buf, "text/html", result)
+                doout && show(buf, "text/html", result)
             elseif isa(result, ImageFile)
                 "show an image stored in a file, but embed"
                 txt = ""
@@ -124,7 +124,7 @@ function mdToHTML(fname::AbstractString; TITLE="", kwargs...)
                 #        ## XXX print out JavaScript
                 #       added_gadfly_preamble = true
                 #      end
-                #     doout && writemime(buf, "text/html", result.o)
+                #     doout && show(buf, "text/html", result.o)
                 # else
                 if isa(result, Plots.Plot{Plots.PlotlyBackend})
                     Plots.prepare_output(result);
@@ -147,7 +147,7 @@ function mdToHTML(fname::AbstractString; TITLE="", kwargs...)
                     ## XXX print out JavaScript
                     added_gadfly_preamble = true
                 end
-                doout && writemime(buf, "text/html", result)
+                doout && show(buf, "text/html", result)
             elseif string(typeof(result)) == "Figure"
                 "Must do gcf() for last line"
                 if length(txt) > 0
@@ -161,17 +161,19 @@ function mdToHTML(fname::AbstractString; TITLE="", kwargs...)
                 length(txt) > 0 && println(buf, """<pre class="sourceCode julia">$txt</pre>""")
                 try
                     tmpbuf = IOBuffer()
+                    println("XXX or else...")
+                    println((mtype, typeof(result)))#, sprint(io -> show(io, mtype, result))))
                     if doout
                         if string(mtype) == "text/plain"                
                             println(tmpbuf, """<pre class="output">""")
-                            writemime(tmpbuf, mtype, result)
+                            show(tmpbuf, mtype, result)
                             println(tmpbuf, """</pre>""")
                         else
                             println(tmpbuf, """<div class="well well-sm">""")
-                            writemime(tmpbuf, mtype, result)
+                            show(tmpbuf, mtype, result)
                             println(tmpbuf, """</div>""")
                         end
-                        println(buf, takebuf_string(tmpbuf))
+                        println(buf, String(take!(tmpbuf))) 
                     end
                 catch e
                     ## no output
@@ -190,7 +192,7 @@ function mdToHTML(fname::AbstractString; TITLE="", kwargs...)
         
     end
 
-    body = takebuf_string(buf)
+    body = String(take!(buf)) #takebuf_string(buf)
 
     ## return string
     D = Dict()

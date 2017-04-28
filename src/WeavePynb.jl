@@ -10,8 +10,9 @@ module WeavePynb
 ## markdownToLaTeX: creates latex files from markdown (XXX??)
 
 
-using JSON, Mustache, LaTeXStrings, Compose, Plots
+using JSON, Mustache, LaTeXStrings, Plots
 using Base.Markdown
+using Base.Dates
 
 include("evalit.jl")
 include("pandoc.jl")
@@ -23,12 +24,14 @@ include("bootstrap.jl")
 include("mmdTomd.jl")
 include("markdownToPynb.jl")    # notebook for questions,
 include("markdownToHTML.jl")   # for making webpages
+include("markdownToRmd.jl")   # for making Rmd files (to run through ...)
 include("markdownToLaTeXQ.jl")  # for CSI questions, not of more general usage
 include("markdownToLaTeX.jl")
 
 export mmd_to_md
 export markdownToPynb 
 export markdownToHTML
+export markdownToRmd
 export markdownToLaTeXQ
 export markdownToLaTeX
 

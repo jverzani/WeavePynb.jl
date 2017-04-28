@@ -9,7 +9,7 @@ function strip_p(txt)
 end
 
 function md(x)
-    out = sprint(io ->  writemime(io, "text/html", Markdown.parse(string(x))))
+    out = sprint(io ->  show(io, "text/html", Markdown.parse(string(x))))
     strip_p(out)
 end
 
@@ -37,8 +37,8 @@ HTMLoutput("<em>em</em>")
 type HTMLoutput
     x
 end
-Base.writemime(io::IO, ::MIME"text/plain", x::HTMLoutput) = print(io, """<div>$(x.x)</div>""")
-Base.writemime(io::IO, ::MIME"text/html", x::HTMLoutput) = print(io, x.x)
+Base.show(io::IO, ::MIME"text/plain", x::HTMLoutput) = print(io, """<div>$(x.x)</div>""")
+Base.show(io::IO, ::MIME"text/html", x::HTMLoutput) = print(io, x.x)
 
 
 
@@ -52,8 +52,8 @@ Verbatim("This will print, but not be executed")
 type Verbatim
     x
 end
-Base.writemime(io::IO, ::MIME"text/plain", x::Verbatim) = print(io, """<pre class="sourceCode julia">$(x.x)</pre>""")
-Base.writemime(io::IO, ::MIME"text/html", x::Verbatim) = print(io, x.x)
+Base.show(io::IO, ::MIME"text/plain", x::Verbatim) = print(io, """<pre class="sourceCode julia">$(x.x)</pre>""")
+Base.show(io::IO, ::MIME"text/html", x::Verbatim) = print(io, x.x)
 
 
 """
@@ -71,7 +71,7 @@ end
 
 ## Bootstrap things
 abstract Bootstrap
-Base.writemime(io::IO, ::MIME"text/html", x::Bootstrap) = print(io, """$(x.x)""")
+Base.show(io::IO, ::MIME"text/html", x::Bootstrap) = print(io, """$(x.x)""")
 
 type Alert <: Bootstrap
     x
@@ -91,11 +91,13 @@ warning(txt; kwargs...) = alert(txt, class="warning", kwargs...)
 note(txt; kwargs...) = alert(txt, class="info", kwargs...)
 
 
-function Base.writemime(io::IO, ::MIME"text/html", x::Alert)
+function Base.show(io::IO, ::MIME"text/html", x::Alert)
     cls = haskey(x.d,:class) ? x.d[:class] : "success"
-    txt = sprint(io -> writemime(io, "text/html", Markdown.parse(x.x)))
+    txt = sprint(io -> show(io, "text/html", Markdown.parse(x.x)))
     tpl = """
-<div class="alert alert-$cls" role="alert">$txt</div>
+<div class="alert alert-$cls" role="alert">\
+$txt \
+</div>\
 """
     
     print(io, tpl)
@@ -121,14 +123,14 @@ function example(txt; kwargs...)
 end
 
 
-function Base.writemime(io::IO, ::MIME"text/html", x::Example)
+function Base.show(io::IO, ::MIME"text/html", x::Example)
     nm = haskey(x.d,:nm) ? " <small>$(x.d[:nm])</small>" : ""
-    txt = sprint(io -> writemime(io, "text/html", Markdown.parse(x.x)))
+    txt = sprint(io -> show(io, "text/html", Markdown.parse(x.x)))
     tpl = """
-<div class="alert alert-danger" role="alert">
-  <span class="glyphicon glyphicon-th" aria-hidden="true"></span>
-  <span class="text-uppercase">example:</span>$nm$txt
-</div>
+<div class="alert alert-danger" role="alert">\
+<span class="glyphicon glyphicon-th" aria-hidden="true"></span>\
+<span class="text-uppercase">example:</span>$nm$txt\
+</div>\
 """
     
     print(io, tpl)
@@ -156,23 +158,23 @@ LaTeX markup does not work, as MathJax rendering is not supported in the popup.
 popup(x; title=" ", icon="share-alt", label=" ") = Popup(x, title, icon, label)
 
 popup_html_tpl=mt"""
-<button type="button" class="btn btn-sm" aria-label="Left Align"
-  data-toggle="popover"
-  title='{{{title}}}'
-  data-html=true
-  data-content='{{{body}}}'
->
-  <span class="glyphicon glyphicon-{{icon}}" aria-hidden="true"></span>{{#button_label}} {{{button_label}}}{{/button_label}}
-</button>
+<button type="button" class="btn btn-sm" aria-label="Left Align"\
+data-toggle="popover"\
+title='{{{title}}}'\
+data-html=true\
+data-content='{{{body}}}'\
+>\
+<span class="glyphicon glyphicon-{{icon}}" aria-hidden="true"></span>{{#button_label}} {{{button_label}}}{{/button_label}}\
+</button>\
 """
 
-function Base.writemime(io::IO, ::MIME"text/html", x::Popup)
+function Base.show(io::IO, ::MIME"text/html", x::Popup)
     d = Dict()
-    d["title"] = sprint(io -> writemime(io, "text/html", Markdown.parse(x.title)))
+    d["title"] = sprint(io -> show(io, "text/html", Markdown.parse(x.title)))
     d["icon"] = x.icon
-    label = sprint(io -> writemime(io, "text/html", Markdown.parse(x.label)))
+    label = sprint(io -> show(io, "text/html", Markdown.parse(x.label)))
     d["button_label"] = strip_p(label)
-    d["body"] = sprint(io -> writemime(io, "text/html", Markdown.parse(x.x)))
+    d["body"] = sprint(io -> show(io, "text/html", Markdown.parse(x.x)))
     println(d)
     Mustache.render(io, popup_html_tpl, d)
 end
@@ -190,16 +192,18 @@ end
 table(x) = Table(x)
 
 table_html_tpl=mt"""
+    
 <div class="table-responsive">
-  <table class="table table-hover">
-  {{{:nms}}}
-  {{{:body}}}                                                                         
-  </table>
+<table class="table table-hover">
+{{{:nms}}}
+{{{:body}}}                                                                         
+</table>
 </div>
+    
 """
 
 
-function Base.writemime(io::IO, ::MIME"text/html", x::Table)
+function Base.show(io::IO, ::MIME"text/html", x::Table)
     d = Dict()
     d[:nms] = "<tr><th>$(join(map(string, names(x.x)), "</th><th>"))</th></tr>\n"
     bdy = ""

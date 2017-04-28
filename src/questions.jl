@@ -12,12 +12,12 @@ The rendering of the questions depends on the output:
 nothing
 
 using Mustache, LaTeXStrings
-import Base: writemime
+import Base: show
 
 abstract Question
 
 
-MaybeString = Union{ASCIIString, AbstractString, Void}
+MaybeString = Union{String, AbstractString, Void}
 
 type Numericq <: Question
     val::Real
@@ -258,7 +258,7 @@ cols: {{{cols}}}
 """
 
 
-function writemime(io::IO, m::MIME"application/x-latexq", x::Radioq)
+function show(io::IO, m::MIME"application/x-latexq", x::Radioq)
     Mustache.render(io, latexq_templates["Radioq"],
                     Dict(:reminder=>x.reminder,
                          :values=> join(x.values, " | "),
@@ -268,7 +268,7 @@ function writemime(io::IO, m::MIME"application/x-latexq", x::Radioq)
                          )
                     )
 end
-function writemime(io::IO, m::MIME"application/x-latexq", x::Question)
+function show(io::IO, m::MIME"application/x-latexq", x::Question)
     tof = split(string(typeof(x)), ".")[end]
     Mustache.render(io, latexq_templates[tof],x)
 end
@@ -316,7 +316,7 @@ latex_templates["Longq"] = mt"""
 \vspace{2in}\\
 """
 
-function writemime(io::IO, m::MIME"application/x-latex", x::Question)
+function show(io::IO, m::MIME"application/x-latex", x::Question)
     tof = split(string(typeof(x)), ".")[end]
     Mustache.render(io, latex_templates[tof],x)
 end
@@ -360,7 +360,7 @@ $('{{{selector}}}').on('change', function() {
 </script>
 """
 
-function writemime(io::IO, m::MIME"text/html", x::Numericq)
+function show(io::IO, m::MIME"text/html", x::Numericq)
     d = Dict()
     d["ID"] = randstring()
     d["TYPE"] = "numeric"
@@ -369,9 +369,7 @@ function writemime(io::IO, m::MIME"text/html", x::Numericq)
     d["hint"] = ""# x.hint
     d["units"] = x.units
     d["correct"] = "Math.abs(this.value - $(x.val)) <= $(x.tol)"
-    println(d)
     out =  Mustache.render(html_templates["Numericq"], d)
-    println(out)
     Mustache.render(io, html_templates["Numericq"], d)
 end
 
@@ -380,8 +378,8 @@ html_templates["Radioq"] = mt"""
 {{#items}}
 <div class="radio">
 <label class='radio{{inline}}'>
-  <input type='radio' name='radio_{{ID}}' value='{{value}}'>
-  {{{label}}}
+<input type='radio' name='radio_{{ID}}' value='{{value}}'>
+{{{label}}}
 </label>
 </div>
 {{/items}}
@@ -420,19 +418,20 @@ $("{{{selector}}}").on("change", function() {
 
 function markdown(x)
     length(x) == 0 && return("")
+    
     x = Markdown.parse(x)
     x = sprint(io -> WeavePynb.tohtml(io, x))
 #    x[4:end-4]                  # strip out <p></p>
-x
+    x
 end
 
 
-function writemime(io::IO, m::MIME"text/html", x::Radioq)
+function show(io::IO, m::MIME"text/html", x::Radioq)
     ID = randstring()
 
     tpl = mt"""
     {{#items}}
-    <div   class="radio{{inline}}"> 
+    <div  class="radio{{inline}}"> 
     <label>
       <input type="radio" name="radio_{{ID}}" value="{{value}}">{{{label}}}
     </label>
@@ -472,7 +471,7 @@ end
 
 
 
-function writemime(io::IO, m::MIME"text/html", x::Question)
+function show(io::IO, m::MIME"text/html", x::Question)
      println(io, "<p>Question type $(typeof(x)) is not supported in this format</p>")
 end
 

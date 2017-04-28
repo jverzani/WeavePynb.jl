@@ -220,7 +220,7 @@ function mdToPynb(fname::AbstractString)
             elseif isa(result, Plots.Plot)
                 tmp = tempname()
                 io = open(tmp, "w")
-                writemime(io, MIME("image/png"), result)
+                show(io, MIME("image/png"), result)
                 close(io)
 
                 dpi = 120
@@ -276,7 +276,7 @@ function mdToPynb(fname::AbstractString)
                 outtype = ifelse(ismatch(r"latex", string(mtype)), "text/latex", "text/plain")
                 output = ""
                 try 
-                    output =  [sprint(io -> writemime(io, mtype, result))]
+                    output =  [sprint(io -> show(io, mtype, result))]
                 catch e
                 end
                 tmp["data"] = Dict()
