@@ -61,6 +61,10 @@ function mdToHTML(fname::AbstractString; TITLE="", kwargs...)
             txt = out.content[i].code
             lang = out.content[i].language
 
+            print("$i: ")
+            println(txt)
+
+            
             ## we need to set
             ## nocode, noeval, noout
             langs = map(lstrip, split(lang, ","))
@@ -161,11 +165,12 @@ function mdToHTML(fname::AbstractString; TITLE="", kwargs...)
                 length(txt) > 0 && println(buf, """<pre class="sourceCode julia">$txt</pre>""")
                 try
                     tmpbuf = IOBuffer()
-                    println("XXX or else...")
+                    println(txt)
                     println((mtype, typeof(result)))#, sprint(io -> show(io, mtype, result))))
                     if doout
                         if string(mtype) == "text/plain"                
                             println(tmpbuf, """<pre class="output">""")
+                            println(result)
                             show(tmpbuf, mtype, result)
                             println(tmpbuf, """</pre>""")
                         else

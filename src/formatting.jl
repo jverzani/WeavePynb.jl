@@ -70,7 +70,7 @@ type Outputonly
 end
 
 ## Bootstrap things
-abstract Bootstrap
+abstract type Bootstrap end
 Base.show(io::IO, ::MIME"text/html", x::Bootstrap) = print(io, """$(x.x)""")
 
 type Alert <: Bootstrap

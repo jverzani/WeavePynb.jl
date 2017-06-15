@@ -55,6 +55,8 @@ safeeval(m, ex::Void) = nothing
 function safeeval(m, ex::Union{Number,Symbol, Expr})
     try
         res = eval(m, ex)
+
+        
     catch e
         print_with_color(:red, "Error with evaluating $ex: $(string(e))\n")
         DisplayError(string(e))

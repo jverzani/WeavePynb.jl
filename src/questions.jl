@@ -14,7 +14,7 @@ nothing
 using Mustache, LaTeXStrings
 import Base: show
 
-abstract Question
+abstract type Question end
 
 
 MaybeString = Union{String, AbstractString, Void}

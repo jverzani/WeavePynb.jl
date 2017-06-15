@@ -104,6 +104,15 @@ function render_pyplot(img)
     out
 end
 
+function render_gr(img)
+     info("render pyplot")
+    out = Dict()
+    out["metadata"] = Dict()
+    out["output_type"] = "execute_result"
+    out["png"] = stringmime("image/png", img)
+    img[:clear]()
+    out
+end
 
 ## Main function to take a jmd file and turn into a ipynb file
 function markdownToPynb(fname::AbstractString)
@@ -143,7 +152,10 @@ function mdToPynb(fname::AbstractString)
     newblocks = Any[]
     added_gadfly_preamble = false
 
-    process_block("using WeavePynb, LaTeXStrings, Plots; pyplot()", m)
+    #    process_block("using WeavePynb, LaTeXStrings, Plots; pyplot()", m)
+    process_block("using WeavePynb, LaTeXStrings, Plots; gr()", m)
+    process_block("type PngImage x end",m)
+    process_block("""png_image = p -> PngImage(stringmime("image/png",p))""",m)
     safeeval(m, parse("macro q_str(x)  \"`\$x`\" end"))
     
     out = Markdown.parse_file(fname,  flavor=Markdown.julia)
@@ -157,9 +169,10 @@ function mdToPynb(fname::AbstractString)
             println(out.content[i])
             ## Code Blocks are evaluated and their last value is added to the output
             ## this is different from IJulia, but similar.
-            ## There are issues with Gadfly graphics (need the script...)
-            ## and PyPlot, where we need an invocation to manage the figures
 
+            ## For graphics, we *now* use `GR`. This requires a flagging
+            ## of `figure` when opening a code block. Otherwise, we get
+            ## world age issues, as of v0.6.0
 
             txt = out.content[i].code
             lang = out.content[i].language
@@ -183,7 +196,11 @@ function mdToPynb(fname::AbstractString)
             ## language is used to pass in arguments
             result = nothing
             if doeval
-                result = process_block(txt, m)
+                if "figure" in langs
+                    result = process_block(txt * "|> png_image", m)
+                else
+                    result = process_block(txt, m)
+                end
             end
 
             !docode && (txt = "")            
@@ -216,57 +233,70 @@ function mdToPynb(fname::AbstractString)
                 else
                     continue
                 end
-                    
-            elseif isa(result, Plots.Plot)
-                tmp = tempname()
-                io = open(tmp, "w")
-                show(io, MIME("image/png"), result)
-                close(io)
 
+            elseif ismatch(r"PngImage", string(typeof(result)))
                 dpi = 120
                 cell["outputs"] = [Dict(
                                         "output_type" => "execute_result",
                                         "execution_count" => nothing,
                                         "data" => Dict("text/plain" => "Plot(...)",
-                                                      "image/png" => base64encode(readall(tmp))
+                                                       "image/png" => result.x
                                                       ),
                                        "metadata" => Dict("image/png" => Dict("width"=>5*dpi, "height"=>4*dpi))  
-                                       )]
+                )]
             elseif isa(result, Verbatim) 
                 "Do not execute input, show as is"
-#                cell["input"] = result.x
-#                cell["outputs"] = []
+                #                cell["input"] = result.x
+                #                cell["outputs"] = []
                 cell["cell_type"] = "markdown"
                 cell["source"] = "<pre>$(result.x)</pre>"
                 delete!(cell, "execution_count")
-            elseif string(typeof(result)) == "FramedPlot"
-                ## Winston graphics
-                cell["outputs"] = [render_winston(result)]
-            elseif  isa(result, Plots.Plot)
-                # if isa(result, Plots.Plot{Plots.GadflyBackend})                
-                #     ## Gadfly graphics
-                #     if !added_gadfly_preamble
-                #         ## XXX this is *not* working, needed to figure out preamble... XXX
-                #         ## Seems like injecting <script> failes.
-                #         const gadfly_preamble = joinpath(dirname(@__FILE__), "..", "tpl", "gadfly-preamble.js")
-                #         script = "<script>$(readall(gadfly_preamble))</script>"
-                #         added_gadfly_preamble = true
-                #     end
-                #     cell["outputs"] = [render_gadfly(result)]
-                # else
-                    if  isa(result, Plots.Plot{Plots.PlotlyBackend})
-                    cell["outputs"] = [render_plotly(result)]
-                end
-            elseif string(typeof(result)) == "Figure"
-                ## *basic* PyPlot graphics.
-                "Must do gcf() for last line"
-                cell["outputs"] = [render_pyplot(result)]
-                if ismatch(r"gcf\(\)$", txt)
-                    cell["input"] = join(split(txt, "\n")[1:(end-1)], "\n") ## trim last line which is gcf()
-                else
-                    cell["input"] = txt ## trim last line which is gcf()
-                end
+                ## We should be able to do this, but instead we now get World Age issues
+            # elseif isa(result, Plots.Plot)
+            #     tmp = tempname()
+            #     io = open(tmp, "w")
+            #     show(io, MIME("image/png"), result)
+            #     close(io)
+
+            #     dpi = 120
+            #     cell["outputs"] = [Dict(
+            #                             "output_type" => "execute_result",
+            #                             "execution_count" => nothing,
+            #                             "data" => Dict("text/plain" => "Plot(...)",
+            #                                            #"image/png" => base64encode(readall(tmp))
+            #                                            "image/png" => out
+            #                                           ),
+            #                            "metadata" => Dict("image/png" => Dict("width"=>5*dpi, "height"=>4*dpi))  
+            #     )]
+            # elseif string(typeof(result)) == "FramedPlot"
+            #     ## Winston graphics
+            #     cell["outputs"] = [render_winston(result)]
+            # elseif  isa(result, Plots.Plot)
+            #     # if isa(result, Plots.Plot{Plots.GadflyBackend})                
+            #     #     ## Gadfly graphics
+            #     #     if !added_gadfly_preamble
+            #     #         ## XXX this is *not* working, needed to figure out preamble... XXX
+            #     #         ## Seems like injecting <script> failes.
+            #     #         const gadfly_preamble = joinpath(dirname(@__FILE__), "..", "tpl", "gadfly-preamble.js")
+            #     #         script = "<script>$(readall(gadfly_preamble))</script>"
+            #     #         added_gadfly_preamble = true
+            #     #     end
+            #     #     cell["outputs"] = [render_gadfly(result)]
+            #     # else
+            #         if  isa(result, Plots.Plot{Plots.PlotlyBackend})
+            #         cell["outputs"] = [render_plotly(result)]
+            #     end
+            # elseif string(typeof(result)) == "Figure"
+            #     ## *basic* PyPlot graphics.
+            #     "Must do gcf() for last line"
+            #     cell["outputs"] = [render_pyplot(result)]
+            #     if ismatch(r"gcf\(\)$", txt)
+            #         cell["input"] = join(split(txt, "\n")[1:(end-1)], "\n") ## trim last line which is gcf()
+            #     else
+            #         cell["input"] = txt ## trim last line which is gcf()
+            #     end
             else
+                ## Catch all
                 tmp = Dict()
                 tmp["metadata"] =Dict()
                 mtype =  bestmime(result)
@@ -274,7 +304,7 @@ function mdToPynb(fname::AbstractString)
                 tmp["execution_count"] = nothing
                 #                outtype = ifelse(ismatch(r"latex", string(mtype)), "latex", "text")
                 outtype = ifelse(ismatch(r"latex", string(mtype)), "text/latex", "text/plain")
-                output = ""
+                    output = ""
                 try 
                     output =  [sprint(io -> show(io, mtype, result))]
                 catch e
@@ -302,7 +332,6 @@ function mdToPynb(fname::AbstractString)
             end
 
             result = out.content[i]
-            println("process"); println(result); println(bestmime(result)); println("----")
             
             
 
