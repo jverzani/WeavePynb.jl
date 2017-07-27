@@ -22,7 +22,7 @@ latex_tpl = mt"""
 """
 
 ## Main function to take a jmd file and turn into a latex questions file
-function markdownToLaTeX(fname::AbstractString, use_template=true)
+function markdownToLaTeX(fname::AbstractString; use_template=true)
     dirnm, basenm = dirname(fname), basename(fname)
     basenm = replace(basenm, r"\.md$", "")
     newnm = basenm * ".tex"
@@ -78,7 +78,8 @@ function mdToLaTeX(fname::AbstractString, outdir, use_template=true)
     m = make_module()
     buf = IOBuffer()
 
-    process_block("using WeavePynb, LaTeXStrings, Plots; gr()", m) #pyplot()
+    process_block("using WeavePynb, LaTeXStrings, Plots; gr()", m) #pyplot(), pgfplots()
+    
     safeeval(m, parse("macro q_str(x)  \"\\\\verb@\$x@\" end"))
     
     out = Markdown.parse_file(fname, flavor=Markdown.julia)
@@ -148,7 +149,7 @@ function mdToLaTeX(fname::AbstractString, outdir, use_template=true)
                 code_input(buf, txt)                                                
 
                 imgnm = "fig_" * randstring() * ".png"
-                png(result, joinpath(outdir, imgnm))
+                Base.invokelatest(png, result, joinpath(outdir, imgnm))
                 println("write to $imgnm")
                 println(buf, """\\includegraphics[width=0.8\\textwidth]{$imgnm}""")
                 println(buf, " ")
@@ -157,15 +158,18 @@ function mdToLaTeX(fname::AbstractString, outdir, use_template=true)
                     mtype =  bestmime(result)
                     outtype = ifelse(ismatch(r"latex", string(mtype)), "latex", "text")
                     code_input(buf, txt)
-                    if string(WeavePynb.bestmime(result)) == "text/plain"
-                      println(buf, "\\begin{Verbatim}[framesep=3mm,frame=leftline, fontshape=it,formatcom=\\color{darker-gray}]")                
-                      show(buf, mtype, result)
-                      println(buf, "")
-                      println(buf, "\\end{Verbatim}")
-                      println(buf, " ")
-                else
-                    println("------>"); println(result)
-                      show(buf, mtype, result)
+                    if string(WeavePynb.bestmime(result)) in ["text/plain", "text/html"]
+                        println(buf, "\\begin{Verbatim}[framesep=3mm,frame=leftline, fontshape=it,formatcom=\\color{darker-gray}]")                
+                        show(buf, mtype, result)
+                        println(buf, "")
+                        println(buf, "\\end{Verbatim}")
+                        println(buf, " ")
+                    else
+                        print("------>")
+                        println(WeavePynb.bestmime(result))
+                        println(result)
+                        println("<-----")
+                        Base.invokelatest(show, buf, mtype, result)
                     end
                 end
             end
@@ -227,7 +231,7 @@ function mmd_to_latex(fname::AbstractString; force::Bool=false, kwargs...)
         tpl = Mustache.template_from_file(fname)
     
         io = open(md, "w")
-        write(io, Mustache.render(tpl, Main.(symbol(bname))))
+        write(io, Mustache.render(tpl, getfield(Main, Symbol(bname))))
         close(io)
 
         markdownToLaTeX(md; kwargs...)

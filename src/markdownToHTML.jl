@@ -137,7 +137,7 @@ function mdToHTML(fname::AbstractString; TITLE="", kwargs...)
                     #                    img = stringmime("image/png", result.o)
                     imgfile = tempname() * ".png"
                     png(result, imgfile)
-                    img = base64encode(readall(imgfile))
+                    img = base64encode(readstring(imgfile))
                     doout && println(buf, """<img alt="Embedded Image" src="data:image/png;base64,$img">""")
                 end
             elseif string(typeof(result)) == "FramedPlot"
@@ -278,7 +278,7 @@ pre {display: block;}
 
 <!-- not TeX-AMS-MML_HTMLorMML-->
 <script type="text/javascript"
-  src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_SVG">  
+  src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_SVG">  
 </script>
 <script>
 MathJax.Hub.Config({

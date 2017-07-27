@@ -87,8 +87,8 @@ function alert(txt; kwargs...)
     Alert(txt, d)
 end
 
-warning(txt; kwargs...) = alert(txt, class="warning", kwargs...)
-note(txt; kwargs...) = alert(txt, class="info", kwargs...)
+warning(txt; kwargs...) = alert(txt; class="warning", kwargs...)
+note(txt; kwargs...) = alert(txt; class="info", kwargs...)
 
 
 function Base.show(io::IO, ::MIME"text/html", x::Alert)
@@ -204,13 +204,16 @@ table_html_tpl=mt"""
 
 
 function Base.show(io::IO, ::MIME"text/html", x::Table)
+    vals = Base.invokelatest(names, x.x)
     d = Dict()
-    d[:nms] = "<tr><th>$(join(map(string, names(x.x)), "</th><th>"))</th></tr>\n"
+    d[:nms] = "<tr><th>$(join(map(string, vals), "</th><th>"))</th></tr>\n"
     bdy = ""
-    for i in 1:size(x.x)[1]
+    m,n = Base.invokelatest(size, x.x)
+    for i in 1:m
         bdy = bdy * "<tr>"
-        for j in 1:size(x.x)[2]
-            bdy = bdy * "<td>$(md(x.x[i,j]))</td>"
+        for j in 1:n
+            val = Base.invokelatest(getindex, x.x, i, j)
+            bdy = bdy * "<td>$(md(val))</td>"
         end
         bdy = bdy * "</tr>\n"
     end

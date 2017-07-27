@@ -59,7 +59,9 @@ function mdToLaTeXQ(fname::AbstractString)
     buf = IOBuffer()
 
     process_block("using WeavePynb, LaTeXStrings, Plots; gr()", m) # pyplot
-    safeeval(m, parse("macro q_str(x)  \"\\\\verb@\$x@\" end"))
+    process_block("type PngImage x end",m)
+    process_block("""png_image = p -> PngImage(stringmime("image/png",p))""",m)
+    safeeval(m, parse("macro q_str(x)  \"\\\\verb&\$x&\" end"))
 
     out = Markdown.parse_file(fname, flavor=Markdown.julia)
     for i in 1:length(out.content)
@@ -91,11 +93,16 @@ function mdToLaTeXQ(fname::AbstractString)
             ## language is used to pass in arguments
             result = nothing
             if doeval
-                result = process_block(txt, m)
+                 if "figure" in langs
+                    result = process_block(txt * "|> png_image", m)
+                else
+                    result = process_block(txt, m)
+                end
             end
 
             !docode && (txt = "")
 
+            
             
 #            txt = out.content[i].code
 #            result = process_block(txt, m)
@@ -132,7 +139,7 @@ function mdToLaTeXQ(fname::AbstractString)
                 println(buf, "\\end{html}")
                 
             elseif string(typeof(result)) == "Figure"
-                println("Handler PyPlot graphics")
+                println("XXX a FIgure")                
                 println(buf, "\\begin{verbatim}")
                 println(buf, txt)
                 println(buf, "\\end{verbatim}")
@@ -141,15 +148,27 @@ function mdToLaTeXQ(fname::AbstractString)
                 img = stringmime("image/png", result)                
                 println(buf, """\n<img alt="Embedded Image" src="data:image/png;base64,$img">\n""")
                 println(buf, "\\end{html}")
-            elseif isa(result, Plots.Plot)
+            elseif isa(result, Plots.Plot) 
+                println("XXX a plot")
                 println(buf, "\\begin{verbatim}")
                 println(buf, txt)
                 println(buf, "\\end{verbatim}")
                 tmp = tempname() * ".png"
-                Plots.png(result, tmp)
-                txt = base64encode(readall(tmp))
+                Base.invokelatest(Plots.png, result, tmp)
+                img = base64encode(readstring(tmp))
                 println(buf, "\\begin{html}")
-                println(buf, """\n<img alt="Embedded Image" src="data:image/png;base64,$txt">\n""")
+                println(buf, """\n<img alt="Embedded Image" src="data:image/png;base64,$img">\n""")
+                println(buf, "\\end{html}")
+            elseif ismatch(r"PngImage", string(typeof(result)))
+                println("XXX a PngImage")
+                println(buf, "\\begin{verbatim}")
+                println(buf, txt)
+                println(buf, "\\end{verbatim}")
+#                tmp = tempname() * ".png"
+#                Base.invokelatest(Plots.png, result, tmp)
+#                img = base64encode(readstring(tmp))
+                println(buf, "\\begin{html}")
+                println(buf, """\n<img alt="Embedded Image" src="data:image/png;base64,$(result.x)">\n""")
                 println(buf, "\\end{html}")
             else
                 if length(txt) > 0
@@ -163,7 +182,7 @@ function mdToLaTeXQ(fname::AbstractString)
                       show(buf, mtype, result)
                       println(buf, "\\end{verbatim}")
                     else
-                      show(buf, mtype, result)
+                        Base.invokelatest(show, buf, mtype, result)
                     end
                 end
             end
@@ -172,11 +191,13 @@ function mdToLaTeXQ(fname::AbstractString)
             try
                 ## Headers...
                 print(buf, header(out.content[i]))
-            catch e
+            catch err
                 tmp = IOBuffer()
                 #                [Markdown.print_inline(tmp, content) for content in out.content[i].content]
+                println("Process $(out.content[i])")
                 show(tmp, "text/latex", out.content[i])
                 txt = String(take!(tmp)) #takebuf_string(tmp)
+                close(tmp)
                 println(txt)
                 txt = replace(txt, "<br/>", "\\newline") # hack for newlines...
                 print(buf, txt) #markdown_to_latex(txt))
@@ -215,7 +236,8 @@ function mmd_to_latexq(fname::AbstractString; force::Bool=false, kwargs...)
         tpl = Mustache.template_from_file(fname)
     
         io = open(md, "w")
-        write(io, Mustache.render(tpl, Main.(symbol(bname))))
+
+        write(io, Mustache.render(tpl, getfield(Main, Symbol(bname))))
         close(io)
 
         markdownToLaTeXQ(md; kwargs...)

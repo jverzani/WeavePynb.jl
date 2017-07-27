@@ -23,7 +23,7 @@ gif_to_data_tpl = """
 """
 
 function gif_to_data(imgfile::AbstractString, caption="")
-    data = base64encode(readall(imgfile))
+    data = base64encode(readstring(imgfile))
     Mustache.render(gif_to_data_tpl, data=data, caption=md(caption))
 end
 

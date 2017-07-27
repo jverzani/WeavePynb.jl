@@ -24,18 +24,20 @@ ipynb_tpl_v4 = mt"""
     ],
  "metadata": {
   "language_info": {
+   "file_extension": ".jl",                                                                                                             
+   "mimetype": "application/julia", 
    "name": "julia",
-   "version": "0.4"
+   "version": "0.6"
   },
  "kernelspec": {
-   "display_name": "Julia 0.4.0",
+   "display_name": "Julia 0.6.0",
    "language": "julia",
-   "name": "julia-0.4"
+   "name": "julia-0.6"
   }
 
  },
  "nbformat": 4,
- "nbformat_minor": 0
+ "nbformat_minor": 2
 
 }
 """
@@ -63,7 +65,7 @@ function render_gadfly(img)
     open(imgfile, "w") do io
         draw(PNG(io, 5inch, inch), img)
     end
-    data = base64encode(readall(imgfile))
+    data = base64encode(readstring(imgfile))
     
     out = Dict()
 #    out["metadata"] = Dict()
@@ -84,7 +86,7 @@ function render_plotly(img)
     info("render plotly")
     imgfile = tempname()
     png(img, imgfile)
-    data = base64encode(readall(imgfile))
+    data = base64encode(readstring(imgfile))
     
     out = Dict()
     out["data"] = Dict()
@@ -252,23 +254,22 @@ function mdToPynb(fname::AbstractString)
                 cell["source"] = "<pre>$(result.x)</pre>"
                 delete!(cell, "execution_count")
                 ## We should be able to do this, but instead we now get World Age issues
-            # elseif isa(result, Plots.Plot)
-            #     tmp = tempname()
-            #     io = open(tmp, "w")
-            #     show(io, MIME("image/png"), result)
-            #     close(io)
+            elseif isa(result, Plots.Plot)
+                tmp = tempname()*".png"
+                Base.invokelatest(png, result, tmp)
 
-            #     dpi = 120
-            #     cell["outputs"] = [Dict(
-            #                             "output_type" => "execute_result",
-            #                             "execution_count" => nothing,
-            #                             "data" => Dict("text/plain" => "Plot(...)",
-            #                                            #"image/png" => base64encode(readall(tmp))
-            #                                            "image/png" => out
-            #                                           ),
-            #                            "metadata" => Dict("image/png" => Dict("width"=>5*dpi, "height"=>4*dpi))  
-            #     )]
-            # elseif string(typeof(result)) == "FramedPlot"
+                dpi = 120
+                cell["outputs"] = [Dict(
+                                        "output_type" => "execute_result",
+                                        "execution_count" => nothing,
+                                        "data" => Dict("text/plain" => "Plot(...)",
+                                                       "image/png" => base64encode(readstring(tmp))
+                                                       #"image/png" => out
+                                                      ),
+                                       "metadata" => Dict("image/png" => Dict("width"=>5*dpi, "height"=>4*dpi))  
+                )]
+
+                # elseif string(typeof(result)) == "FramedPlot"
             #     ## Winston graphics
             #     cell["outputs"] = [render_winston(result)]
             # elseif  isa(result, Plots.Plot)
@@ -278,7 +279,7 @@ function mdToPynb(fname::AbstractString)
             #     #         ## XXX this is *not* working, needed to figure out preamble... XXX
             #     #         ## Seems like injecting <script> failes.
             #     #         const gadfly_preamble = joinpath(dirname(@__FILE__), "..", "tpl", "gadfly-preamble.js")
-            #     #         script = "<script>$(readall(gadfly_preamble))</script>"
+                #     #         script = "<script>$(readstring(gadfly_preamble))</script>"
             #     #         added_gadfly_preamble = true
             #     #     end
             #     #     cell["outputs"] = [render_gadfly(result)]
@@ -306,7 +307,7 @@ function mdToPynb(fname::AbstractString)
                 outtype = ifelse(ismatch(r"latex", string(mtype)), "text/latex", "text/plain")
                     output = ""
                 try 
-                    output =  [sprint(io -> show(io, mtype, result))]
+                    output =  [sprint(io -> Base.invokelatest(show, io, mtype, result))]
                 catch e
                 end
                 tmp["data"] = Dict()

@@ -2,14 +2,14 @@
 
 # Super-simple pandoc interface.
 function pandoc(infn, infmt::AbstractString, outfmt::AbstractString, args::AbstractString...)
-    cmd = ByteString["pandoc",
+    cmd = String["pandoc",
                      "--from=$(infmt)",
                      "--to=$(outfmt)"]
     for arg in args
         push!(cmd, arg)
     end
 
-    readall(pipeline(infn, Cmd(cmd)))
+    readstring(pipeline(infn, Cmd(cmd)))
 end
 
 """

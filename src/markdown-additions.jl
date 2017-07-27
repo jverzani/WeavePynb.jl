@@ -119,7 +119,7 @@ function show(io::IO, ::MIME"text/latex", md::Markdown.BlockQuote)
 end
 
 function show(io::IO, ::MIME"text/latex", md::Markdown.List)
-    with_environment(io, md.ordered ? "enumerate" : "itemize") do
+    with_environment(io, md.ordered < 0 ? "enumerate" : "itemize") do
     for item in md.items
         print(io, "\\item ")
         [show(io, "text/latex", i) for i in item]
