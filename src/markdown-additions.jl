@@ -141,9 +141,13 @@ function show(io::IO, ::MIME"text/latex", md::Markdown.Italic)
     print(io, "\\textit{$(join(md.text))}")
 end
 
-function show(io::IO, ::MIME"text/latex", md::Markdown.Image)
-  print(io, """<img src="$(md.url)" alt="$(md.alt)"></img>""")
+function show(io::IO, ::MIME"text/latex", code::Markdown.Image)
+    print(io, "\\includegraphics{$(code.url)}")
 end
+
+# function show(io::IO, ::MIME"text/latex", md::Markdown.Image)
+#   print(io, """<img src="$(md.url)" alt="$(md.alt)"></img>""")
+# end
 
 function show(io::IO, ::MIME"text/latex", md::Markdown.Link)
     print(io, "\\href{$(md.url)}{$(join(md.text))}")

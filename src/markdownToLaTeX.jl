@@ -22,7 +22,7 @@ latex_tpl = mt"""
 """
 
 ## Main function to take a jmd file and turn into a latex questions file
-function markdownToLaTeX(fname::AbstractString; use_template=true)
+function markdownToLaTeX(fname::AbstractString; use_template=true, tpl=latex_tpl, kwargs...)
     dirnm, basenm = dirname(fname), basename(fname)
     basenm = replace(basenm, r"\.md$", "")
     newnm = basenm * ".tex"
@@ -32,7 +32,7 @@ function markdownToLaTeX(fname::AbstractString; use_template=true)
         mkdir(basenm)
     end
 
-    out = mdToLaTeX(fname, basenm, use_template)
+    out = mdToLaTeX(fname, basenm, use_template, tpl; kwargs...)
 
     
     
@@ -42,6 +42,9 @@ function markdownToLaTeX(fname::AbstractString; use_template=true)
 end
 
 function code_input(buf, txt)
+    if isa(txt, Void) || (isa(txt, String) && length(txt) == 0)
+        return
+    end
     println(buf, "\\begin{Verbatim}[framesep=1mm,frame=leftline,fontfamily=courier,formatcom=\\color{darker-gray}]")
     println(buf, txt)
     println(buf, "\\end{Verbatim}")
@@ -73,8 +76,11 @@ any subsequent figures are added to a new canvas
 
 """
 
-function mdToLaTeX(fname::AbstractString, outdir, use_template=true)
+function mdToLaTeX(fname::AbstractString, outdir, use_template=true, tpl=latex_tpl;kwargs...)
 
+    D = Dict(string(k)=>v for (k,v) in kwargs)
+    imgwidth = haskey(D, "imgwidth") ? D["imagewidth"] : "0.65"
+    
     m = make_module()
     buf = IOBuffer()
 
@@ -135,11 +141,11 @@ function mdToLaTeX(fname::AbstractString, outdir, use_template=true)
             elseif  string(typeof(result)) == "Plot"
                 println("Handle gadfly graphics")
                 code_input(buf, txt)                
-
-                imgnm = randstring() * ".png"
+                imgnm = "fig-$i-" * string(hash(txt)) * ".png"
+#                imgnm = randstring() * ".png"
                 png(result, joinpath(outdir, imgnm))
 
-                println(buf, """\\n\\includegraphics{$imgnm}\\n""")
+                println(buf, """\\n\\includegraphics[width=$imgwidth\\textwidth]{$imgnm}\\n""")
                 
             elseif string(typeof(result)) == "Figure"
                 println("Handler PyPlot graphics")
@@ -148,10 +154,11 @@ function mdToLaTeX(fname::AbstractString, outdir, use_template=true)
             elseif isa(result, Plots.Plot)
                 code_input(buf, txt)                                                
 
-                imgnm = "fig_" * randstring() * ".png"
+                imgnm = "fig-$i-" * string(hash(txt)) * ".png"                
+#                imgnm = "fig_" * randstring() * ".png"
                 Base.invokelatest(png, result, joinpath(outdir, imgnm))
                 println("write to $imgnm")
-                println(buf, """\\includegraphics[width=0.8\\textwidth]{$imgnm}""")
+                println(buf, """\\includegraphics[width=$imgwidth\\textwidth]{$imgnm}""")
                 println(buf, " ")
             else
                 if length(txt) > 0
@@ -159,8 +166,8 @@ function mdToLaTeX(fname::AbstractString, outdir, use_template=true)
                     outtype = ifelse(ismatch(r"latex", string(mtype)), "latex", "text")
                     code_input(buf, txt)
                     if string(WeavePynb.bestmime(result)) in ["text/plain", "text/html"]
-                        println(buf, "\\begin{Verbatim}[framesep=3mm,frame=leftline, fontshape=it,formatcom=\\color{darker-gray}]")                
-                        show(buf, mtype, result)
+                        println(buf, "\\begin{Verbatim}[framesep=3mm,frame=leftline, fontshape=it,formatcom=\\color{darker-gray}]")
+                        Base.invokelatest(show, buf, mtype, result)                        
                         println(buf, "")
                         println(buf, "\\end{Verbatim}")
                         println(buf, " ")
@@ -199,7 +206,12 @@ function mdToLaTeX(fname::AbstractString, outdir, use_template=true)
     txt = String(take!(buf)) #takebuf_string(buf)
     ## return string
     if use_template
-        Mustache.render(latex_tpl, Dict("TITLE" => "TITLE", "txt" => txt))
+        D = Dict(string(k)=>v for (k,v) in kwargs)
+        D["txt"] = txt
+        if !haskey(D, "TITLE")
+            D["TITLE"] = "TITLE"
+        end
+        Mustache.render(tpl, D)
     else
         txt
     end
@@ -238,3 +250,51 @@ function mmd_to_latex(fname::AbstractString; force::Bool=false, kwargs...)
     end
 end
 export mmd_to_latex
+
+
+## Markup:
+## instructions
+## ----
+##
+## # (5pts)
+##
+## # (10pts)
+
+
+
+function make_exam(fname::String; kwargs...)
+    latex_tpl="""
+\\documentclass[12pt]{article}
+\\usepackage{jv}
+\\definecolor{darker-gray}{gray}{0.05}
+\\usepackage{sectsty}
+\\sectionfont{\\fontsize{12}{15}\\selectfont}
+\\renewcommand{\\LHEAD}{Name:}
+\\renewcommand{\\RHEAD}{ {{{TITLE}}} }
+\\renewcommand{\\RFOOT}{--\\thepage--}
+\\renewcommand{\\headrulewidth}{0.1pt}
+\\geometry{paper=letterpaper,body={6.5in,8.5in}}
+\\renewcommand{\\smallskip}{\\vspace{.25in}}
+\\newcommand{\\moderateskip}{\\vspace{1.0in}}
+\\newcommand{\\Medskip}{\\vspace{1.25in}}
+\\renewcommand{\\medskip}{\\vspace{.75in}}
+\\renewcommand{\\bigskip}{\\vspace{2.5in}}
+
+\\newenvironment{problemenvironment}{%
+   \\renewcommand\\descriptionlabel[1]{\\hspace{\\labelsep}\\textbf{(##1 pts.)}}
+   \\begin{description}%
+}{%
+   \\end{description}%
+}
+      
+\\begin{document}
+    
+    {{{txt}}}
+
+
+\\end{document}
+"""
+
+    markdownToLaTeX(fname; use_template=true, tpl=latex_tpl, kwargs...)
+
+end    

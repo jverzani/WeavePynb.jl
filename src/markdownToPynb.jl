@@ -156,8 +156,6 @@ function mdToPynb(fname::AbstractString)
 
     #    process_block("using WeavePynb, LaTeXStrings, Plots; pyplot()", m)
     process_block("using WeavePynb, LaTeXStrings, Plots; gr()", m)
-    process_block("type PngImage x end",m)
-    process_block("""png_image = p -> PngImage(stringmime("image/png",p))""",m)
     safeeval(m, parse("macro q_str(x)  \"`\$x`\" end"))
     
     out = Markdown.parse_file(fname,  flavor=Markdown.julia)
@@ -198,11 +196,7 @@ function mdToPynb(fname::AbstractString)
             ## language is used to pass in arguments
             result = nothing
             if doeval
-                if "figure" in langs
-                    result = process_block(txt * "|> png_image", m)
-                else
                     result = process_block(txt, m)
-                end
             end
 
             !docode && (txt = "")            
@@ -210,7 +204,7 @@ function mdToPynb(fname::AbstractString)
 
             
             cell["cell_type"] = "code"
-            cell["execution_count"] = nothing
+            cell["execution_count"] = 1
             #cell["collapsed"] = false
             #cell["language"] = "python"
             #            cell["input"] = txt
@@ -236,16 +230,6 @@ function mdToPynb(fname::AbstractString)
                     continue
                 end
 
-            elseif ismatch(r"PngImage", string(typeof(result)))
-                dpi = 120
-                cell["outputs"] = [Dict(
-                                        "output_type" => "execute_result",
-                                        "execution_count" => nothing,
-                                        "data" => Dict("text/plain" => "Plot(...)",
-                                                       "image/png" => result.x
-                                                      ),
-                                       "metadata" => Dict("image/png" => Dict("width"=>5*dpi, "height"=>4*dpi))  
-                )]
             elseif isa(result, Verbatim) 
                 "Do not execute input, show as is"
                 #                cell["input"] = result.x
@@ -255,19 +239,23 @@ function mdToPynb(fname::AbstractString)
                 delete!(cell, "execution_count")
                 ## We should be able to do this, but instead we now get World Age issues
             elseif isa(result, Plots.Plot)
-                tmp = tempname()*".png"
-                Base.invokelatest(png, result, tmp)
-
-                dpi = 120
-                cell["outputs"] = [Dict(
-                                        "output_type" => "execute_result",
-                                        "execution_count" => nothing,
-                                        "data" => Dict("text/plain" => "Plot(...)",
-                                                       "image/png" => base64encode(readstring(tmp))
-                                                       #"image/png" => out
-                                                      ),
+#                if false  # XXX this has issues?
+                    tmp = tempname()*".png"
+                    Base.invokelatest(png, result, tmp)
+                    
+                    dpi = 120
+                    cell["outputs"] = [Dict(
+                                            "output_type" => "execute_result",
+                                            "execution_count" => 1,
+                                            "data" => Dict("text/plain" => "Plot(...)",
+                                                           "image/png" => base64encode(readstring(tmp))
+                                                           #"image/png" => out
+                                                           ),
                                        "metadata" => Dict("image/png" => Dict("width"=>5*dpi, "height"=>4*dpi))  
-                )]
+                    )]
+#                else
+#                    cell["outputs"] = []
+#                end
 
                 # elseif string(typeof(result)) == "FramedPlot"
             #     ## Winston graphics
@@ -302,7 +290,7 @@ function mdToPynb(fname::AbstractString)
                 tmp["metadata"] =Dict()
                 mtype =  bestmime(result)
                 tmp["output_type"] = "execute_result"
-                tmp["execution_count"] = nothing
+                tmp["execution_count"] = 1
                 #                outtype = ifelse(ismatch(r"latex", string(mtype)), "latex", "text")
                 outtype = ifelse(ismatch(r"latex", string(mtype)), "text/latex", "text/plain")
                     output = ""
@@ -338,6 +326,12 @@ function mdToPynb(fname::AbstractString)
 
             cell["source"] = sprint(io -> Markdown.html(io, out.content[i]))
         end
+
+println("xxxxx")
+cell["source"] == String[""] && println("XXXXXXX")
+#        println("Source is ", cell["source"])
+
+
 
         push!(newblocks, JSON.json(cell))
     end

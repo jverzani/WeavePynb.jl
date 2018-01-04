@@ -59,8 +59,6 @@ function mdToLaTeXQ(fname::AbstractString)
     buf = IOBuffer()
 
     process_block("using WeavePynb, LaTeXStrings, Plots; gr()", m) # pyplot
-    process_block("type PngImage x end",m)
-    process_block("""png_image = p -> PngImage(stringmime("image/png",p))""",m)
     safeeval(m, parse("macro q_str(x)  \"\\\\verb&\$x&\" end"))
 
     out = Markdown.parse_file(fname, flavor=Markdown.julia)
@@ -93,11 +91,7 @@ function mdToLaTeXQ(fname::AbstractString)
             ## language is used to pass in arguments
             result = nothing
             if doeval
-                 if "figure" in langs
-                    result = process_block(txt * "|> png_image", m)
-                else
-                    result = process_block(txt, m)
-                end
+                result = process_block(txt, m)
             end
 
             !docode && (txt = "")
@@ -158,17 +152,6 @@ function mdToLaTeXQ(fname::AbstractString)
                 img = base64encode(readstring(tmp))
                 println(buf, "\\begin{html}")
                 println(buf, """\n<img alt="Embedded Image" src="data:image/png;base64,$img">\n""")
-                println(buf, "\\end{html}")
-            elseif ismatch(r"PngImage", string(typeof(result)))
-                println("XXX a PngImage")
-                println(buf, "\\begin{verbatim}")
-                println(buf, txt)
-                println(buf, "\\end{verbatim}")
-#                tmp = tempname() * ".png"
-#                Base.invokelatest(Plots.png, result, tmp)
-#                img = base64encode(readstring(tmp))
-                println(buf, "\\begin{html}")
-                println(buf, """\n<img alt="Embedded Image" src="data:image/png;base64,$(result.x)">\n""")
                 println(buf, "\\end{html}")
             else
                 if length(txt) > 0
