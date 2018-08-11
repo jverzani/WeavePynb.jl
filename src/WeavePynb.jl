@@ -1,6 +1,6 @@
 __precompile__(true)
 module WeavePynb
-
+# cf: https://github.com/fredrikekre/Literate.jl/tree/master/src
 
 ## Goal here
 ## have a weave that:
