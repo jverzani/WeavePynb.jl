@@ -25,7 +25,7 @@ ul li {list-style-image: url(http://www.math.csi.cuny.edu/static/images/julia.pn
 ## Main function to take a jmd file and turn into a latex questions file
 function markdownToLaTeXQ(fname::AbstractString)
     dirnm, basenm = dirname(fname), basename(fname)
-    newnm = replace(fname, r"[.].*", ".tex")
+    newnm = replace(fname, r"[.].*" => ".tex")
     out = mdToLaTeXQ(fname)
     
     io = open(newnm, "w")
@@ -52,14 +52,13 @@ any subsequent figures are added to a new canvas
 * `Gadfly` graphics are not (yet) supported, though this should be addressed .
 
 """
-
 function mdToLaTeXQ(fname::AbstractString)
 
     m = make_module()
     buf = IOBuffer()
 
     process_block("using WeavePynb, LaTeXStrings, Plots; gr()", m) # pyplot
-    safeeval(m, parse("macro q_str(x)  \"\\\\verb&\$x&\" end"))
+    safeeval(m, Meta.parse("macro q_str(x)  \"\\\\verb&\$x&\" end"))
 
     out = Markdown.parse_file(fname, flavor=Markdown.julia)
     for i in 1:length(out.content)
@@ -156,7 +155,7 @@ function mdToLaTeXQ(fname::AbstractString)
             else
                 if length(txt) > 0
                     mtype =  bestmime(result)
-                    outtype = ifelse(ismatch(r"latex", string(mtype)), "latex", "text")
+                    outtype = ifelse(occursin(r"latex", string(mtype)), "latex", "text")
                     println(buf, "\\begin{verbatim}")
                     println(buf, txt)
                     println(buf, "\\end{verbatim}")
@@ -182,7 +181,7 @@ function mdToLaTeXQ(fname::AbstractString)
                 txt = String(take!(tmp)) #takebuf_string(tmp)
                 close(tmp)
                 println(txt)
-                txt = replace(txt, "<br/>", "\\newline") # hack for newlines...
+                txt = replace(txt, "<br/>" => "\\newline") # hack for newlines...
                 print(buf, txt) #markdown_to_latex(txt))
             end
         end
@@ -204,11 +203,11 @@ end
 """
 function mmd_to_latexq(fname::AbstractString; force::Bool=false, kwargs...)
     bname = basename(fname)
-    ismatch(r"\.mmd$", bname) || error("this is for mmd template files")
-    bname = replace(bname, r"\.mmd$", "")
+    occursin(r"\.mmd$", bname) || error("this is for mmd template files")
+    bname = replace(bname, r"\.mmd$" => "")
 
-    jl = replace(fname,".mmd",".jl")
-    tex = replace(fname,".mmd",".tex")
+    jl = replace(fname,".mmd" => ".jl")
+    tex = replace(fname,".mmd" => ".tex")
     mmd = fname
     md = "$bname.md"
     

@@ -1,4 +1,3 @@
-__precompile__(true)
 module WeavePynb
 # cf: https://github.com/fredrikekre/Literate.jl/tree/master/src
 
@@ -11,8 +10,10 @@ module WeavePynb
 
 
 using JSON, Mustache, LaTeXStrings, Plots
-using Base.Markdown
-using Base.Dates
+using Markdown
+using Dates
+using Base64
+using Random
 
 include("evalit.jl")
 include("pandoc.jl")

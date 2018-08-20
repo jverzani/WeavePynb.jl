@@ -9,7 +9,7 @@ function pandoc(infn, infmt::AbstractString, outfmt::AbstractString, args::Abstr
         push!(cmd, arg)
     end
 
-    readstring(pipeline(infn, Cmd(cmd)))
+    read(pipeline(infn, Cmd(cmd)), String)
 end
 
 """

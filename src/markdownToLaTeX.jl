@@ -24,7 +24,7 @@ latex_tpl = mt"""
 ## Main function to take a jmd file and turn into a latex questions file
 function markdownToLaTeX(fname::AbstractString; use_template=true, tpl=latex_tpl, kwargs...)
     dirnm, basenm = dirname(fname), basename(fname)
-    basenm = replace(basenm, r"\.md$", "")
+    basenm = replace(basenm, r"\.md$" => "")
     newnm = basenm * ".tex"
 
     if !isdir(basenm)
@@ -42,7 +42,7 @@ function markdownToLaTeX(fname::AbstractString; use_template=true, tpl=latex_tpl
 end
 
 function code_input(buf, txt)
-    if isa(txt, Void) || (isa(txt, String) && length(txt) == 0)
+    if isa(txt, Nothing) || (isa(txt, String) && length(txt) == 0)
         return
     end
     println(buf, "\\begin{Verbatim}[framesep=1mm,frame=leftline,fontfamily=courier,formatcom=\\color{darker-gray}]")
@@ -75,7 +75,6 @@ any subsequent figures are added to a new canvas
 * `Gadfly` graphics are not (yet) supported, though this should be addressed .
 
 """
-
 function mdToLaTeX(fname::AbstractString, outdir, use_template=true, tpl=latex_tpl;kwargs...)
 
     D = Dict(string(k)=>v for (k,v) in kwargs)
@@ -86,7 +85,7 @@ function mdToLaTeX(fname::AbstractString, outdir, use_template=true, tpl=latex_t
 
     process_block("using WeavePynb, LaTeXStrings, Plots; gr()", m) #pyplot(), pgfplots()
     
-    safeeval(m, parse("macro q_str(x)  \"\\\\verb@\$x@\" end"))
+    safeeval(m, Meta.parse("macro q_str(x)  \"\\\\verb@\$x@\" end"))
     
     out = Markdown.parse_file(fname, flavor=Markdown.julia)
     for i in 1:length(out.content)
@@ -163,7 +162,7 @@ function mdToLaTeX(fname::AbstractString, outdir, use_template=true, tpl=latex_t
             else
                 if length(txt) > 0
                     mtype =  bestmime(result)
-                    outtype = ifelse(ismatch(r"latex", string(mtype)), "latex", "text")
+                    outtype = ifelse(occursin(r"latex", string(mtype)), "latex", "text")
                     code_input(buf, txt)
                     if string(WeavePynb.bestmime(result)) in ["text/plain", "text/html"]
                         println(buf, "\\begin{Verbatim}[framesep=3mm,frame=leftline, fontshape=it,formatcom=\\color{darker-gray}]")
@@ -191,12 +190,12 @@ function mdToLaTeX(fname::AbstractString, outdir, use_template=true, tpl=latex_t
                 #                [Markdown.print_inline(tmp, content) for content in out.content[i].content]
                 show(tmp, "text/latex", out.content[i])
                 txt = String(take!(tmp)) #takebuf_string(tmp)
-                println(ismatch(r"newline", txt))
-                txt = replace(txt, "\\newline", "")
+                println(occursin(r"newline", txt))
+                txt = replace(txt, "\\newline" => "")
                 println("~~~~")
                 println(txt)
                 println("~~~~")                
-                txt = replace(txt, "<br/>", "\\newline") # hack for newlines...
+                txt = replace(txt, "<br/>" => "\\newline") # hack for newlines...
                 println(buf, txt) #markdown_to_latex(txt))
                 println(buf, "")
             end
@@ -228,11 +227,11 @@ end
 """
 function mmd_to_latex(fname::AbstractString; force::Bool=false, kwargs...)
     bname = basename(fname)
-    ismatch(r"\.mmd$", bname) || error("this is for mmd template files")
-    bname = replace(bname, r"\.mmd$", "")
+    occursin(r"\.mmd$", bname) || error("this is for mmd template files")
+    bname = replace(bname, r"\.mmd$" => "")
 
-    jl = replace(fname,".mmd",".jl")
-    tex = replace(fname,".mmd",".tex")
+    jl = replace(fname,".mmd" =>".jl")
+    tex = replace(fname,".mmd" => ".tex")
     mmd = fname
     md = "$bname.md"
     

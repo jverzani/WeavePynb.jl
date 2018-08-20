@@ -65,7 +65,7 @@ function render_gadfly(img)
     open(imgfile, "w") do io
         draw(PNG(io, 5inch, inch), img)
     end
-    data = base64encode(readstring(imgfile))
+    data = base64encode(read(imgfile, String))
     
     out = Dict()
 #    out["metadata"] = Dict()
@@ -86,7 +86,7 @@ function render_plotly(img)
     info("render plotly")
     imgfile = tempname()
     png(img, imgfile)
-    data = base64encode(readstring(imgfile))
+    data = base64encode(read(imgfile, String))
     
     out = Dict()
     out["data"] = Dict()
@@ -120,7 +120,7 @@ end
 function markdownToPynb(fname::AbstractString)
     
     dirnm, basenm = dirname(fname), basename(fname)
-    newnm = replace(fname, r"[.].*", ".ipynb")
+    newnm = replace(fname, r"[.].*" => ".ipynb")
     out = mdToPynb(fname)
     
     io = open(newnm, "w")
@@ -146,7 +146,6 @@ any subsequent figures are added to a new canvas
 * `Gadfly` graphics are not (yet) supported, though this should be addressed .
 
 """
-
 function mdToPynb(fname::AbstractString)
 
     m = make_module()
@@ -156,7 +155,7 @@ function mdToPynb(fname::AbstractString)
 
     #    process_block("using WeavePynb, LaTeXStrings, Plots; pyplot()", m)
     process_block("using WeavePynb, LaTeXStrings, Plots; gr()", m)
-    safeeval(m, parse("macro q_str(x)  \"`\$x`\" end"))
+    safeeval(m, Meta.parse("macro q_str(x)  \"`\$x`\" end"))
     
     out = Markdown.parse_file(fname,  flavor=Markdown.julia)
     for i in 1:length(out.content)
@@ -248,7 +247,7 @@ function mdToPynb(fname::AbstractString)
                                             "output_type" => "execute_result",
                                             "execution_count" => 1,
                                             "data" => Dict("text/plain" => "Plot(...)",
-                                                           "image/png" => base64encode(readstring(tmp))
+                                                           "image/png" => base64encode(read(tmp, String))
                                                            #"image/png" => out
                                                            ),
                                        "metadata" => Dict("image/png" => Dict("width"=>5*dpi, "height"=>4*dpi))  
@@ -292,7 +291,7 @@ function mdToPynb(fname::AbstractString)
                 tmp["output_type"] = "execute_result"
                 tmp["execution_count"] = 1
                 #                outtype = ifelse(ismatch(r"latex", string(mtype)), "latex", "text")
-                outtype = ifelse(ismatch(r"latex", string(mtype)), "text/latex", "text/plain")
+                outtype = ifelse(occursin(r"latex", string(mtype)), "text/latex", "text/plain")
                     output = ""
                 try 
                     output =  [sprint(io -> Base.invokelatest(show, io, mtype, result))]

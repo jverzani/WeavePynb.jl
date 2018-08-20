@@ -31,7 +31,7 @@ end
 
 function bestmime(val)
   for mime in ("text/html",  "text/latex", "application/x-latex", "image/svg+xml", "image/png", "text/plain")
-    mimewritable(mime, val) && return MIME(Symbol(mime))
+    showable(mime, val) && return MIME(Symbol(mime))
   end
   error("Cannot render $val to Markdown.")
 end
@@ -66,7 +66,7 @@ end
 ##   show(io::IO, mime, block.content[end])
 ## end
 
-function show{l}(io::IO, mime::MIME"text/latex", header::Markdown.Header{l})
+function show(io::IO, mime::MIME"text/latex", header::Markdown.Header{l}) where {l}
     txt = join(header.text)
     if l == 1 
         print(io, "\\section{$(txt)}")
@@ -81,7 +81,7 @@ end
 
 "heuristic to identify code blocks"
 const block_code_re = r"^\n.*\n$"
-is_blockcode(content) = isa(content, Markdown.Code) && ismatch(block_code_re, content.code)
+is_blockcode(content) = isa(content, Markdown.Code) && occursin(block_code_re, content.code)
 #function show(io::IO, ::MIME"text/latex", code::Markdown.BlockCode)
 function show(io::IO, ::MIME"text/latex", code::Markdown.Code)
 println((code.code, is_blockcode(code)))
@@ -91,10 +91,10 @@ println((code.code, is_blockcode(code)))
     end
   else
     txt = code.code
-    txt = replace(txt, "^", "\\^{}")
-    txt = replace(txt, "_", "\\_{}")
-    txt = replace(txt, "#", "\\#")
-    txt = replace(txt, "@", "\\@")
+    txt = replace(txt, "^" => "\\^{}")
+    txt = replace(txt, "_" => "\\_{}")
+    txt = replace(txt, "#" => "\\#")
+    txt = replace(txt, "@" => "\\@")
     print(io, "\\texttt{$(txt)}")
   end
 end
@@ -158,7 +158,7 @@ function show(io::IO, ::MIME"text/latex", md::Markdown.LaTeX)
   ## Hack, we use $$~ ~$$ to mark these up, so if we see ~..~ wrapping
   ## we add in ...
   txt = md.formula
-  if ismatch(r"^~.*", txt)
+  if occursin(r"^~.*", txt)
     print(io, "\n")
     show(io, "text/latex", L"$$")
     show(io, "text/latex",  txt[2:(end-1)])
@@ -174,7 +174,7 @@ function show(io::IO, ::MIME"text/html", md::Markdown.LaTeX)
   ## Hack, we use $$~ ~$$ to mark these up, so if we see ~..~ wrapping
   ## we add in ...
   txt = md.formula
-  if ismatch(r"^~.*", txt)
+  if occursin(r"^~.*", txt)
     print(io, "\n")
     show(io, "text/latex", L"$$")
     show(io, "text/latex",  txt[2:(end-1)])
@@ -186,7 +186,7 @@ function show(io::IO, ::MIME"text/html", md::Markdown.LaTeX)
 end
 
 
-function show{T <: AbstractString}(io::IO, ::MIME"text/latex", md::T)
+function show(io::IO, ::MIME"text/latex", md::T) where {T <: AbstractString}
    print(io, md)
 end
 

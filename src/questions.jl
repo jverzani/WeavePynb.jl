@@ -17,9 +17,9 @@ import Base: show
 abstract type Question end
 
 
-MaybeString = Union{String, AbstractString, Void}
+MaybeString = Union{String, AbstractString, Nothing}
 
-type Numericq <: Question
+mutable struct Numericq <: Question
     val::Real
     tol::Real
     reminder
@@ -30,7 +30,7 @@ type Numericq <: Question
     hint
 end
 
-type Radioq <: Question
+mutable struct Radioq <: Question
     choices::Vector
     answer::Int
     reminder
@@ -43,7 +43,7 @@ type Radioq <: Question
 end
 
 
-type Multiq <: Question
+mutable struct Multiq <: Question
     choices::Vector
     answer::Vector{Int}
     reminder::AbstractString
@@ -55,14 +55,14 @@ type Multiq <: Question
     inline::Bool
 end
 
-type Shortq <: Question
+mutable struct Shortq <: Question
     answer
     reminder::AbstractString
     answer_text::MaybeString
     hint
 end
 
-type Longq <: Question
+mutable struct Longq <: Question
     reminder::AbstractString
     answer_text::MaybeString
     hint
@@ -96,7 +96,7 @@ numericq(10, 1e-3, "what is 5 + 5?", units="An integer")
 ```
 """
 function numericq(val, tol=1e-3, reminder="", args...; hint::AbstractString="", units::AbstractString="")
-    answer_text= "[$(round(val-tol,5)), $(round(val+tol,5))]"
+    answer_text= "[$(round(val-tol,digits=5)), $(round(val+tol,digits=5))]"
     Numericq(val, tol, reminder, answer_text, val-tol, val+tol, units, hint)
 end
 
@@ -125,7 +125,7 @@ function radioq(choices, answer, reminder="", answer_text=nothing;  hint::Abstra
     labels = choices # map(markdown_to_latex,choices) |> x -> map(chomp, x) ##|> x -> join(x, " | ")
     !keep_order && shuffle!(inds)
 
-    Radioq(choices[inds], findfirst(inds, answer), reminder, answer_text, values, labels[inds], hint, inline)
+    Radioq(choices[inds], findfirst(isequal(answer), inds), reminder, answer_text, values, labels[inds], hint, inline)
 end
 
 """
@@ -172,7 +172,7 @@ Short question, has regular expression grading:
 Example:
 
 ```
-shortq("x^2", L"a expression using powers to compute x\cdot x")
+shortq("x^2", L"a expression using powers to compute x\\cdot x")
 ```
 
 Do not use format in answer part. The reminder defaults to an empty string.

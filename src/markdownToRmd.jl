@@ -49,7 +49,7 @@ end
 function markdownToRmd(fname::AbstractString; TITLE="", kwargs...)
     
     dirnm, basenm = dirname(fname), basename(fname)
-    newnm = replace(fname, r"[.].*", ".Rmd")
+    newnm = replace(fname, r"[.].*" => ".Rmd")
     out = mdToRmd(fname; TITLE=TITLE, kwargs...)
     
     io = open(newnm, "w")
@@ -73,8 +73,8 @@ Markdown idiosyncracies:
 """
 function mdToRmd(fname::AbstractString; TITLE="", kwargs...)
     m = make_module()
-    safeeval(m, parse("using LaTeXStrings, Plots; plotly()"))
-    safeeval(m, parse("macro q_str(x)  \"`\$x`\" end"))
+    safeeval(m, Meta.parse("using LaTeXStrings, Plots; plotly()"))
+    safeeval(m, Meta.parse("macro q_str(x)  \"`\$x`\" end"))
     
     process_block("using WeavePynb, LaTeXStrings", m)
     
@@ -126,7 +126,7 @@ function mdToRmd(fname::AbstractString; TITLE="", kwargs...)
             ## hsould use dispatch here, but we don't....
             if result == nothing
                 "Do not show output, just input"
-                txt = replace(txt, r"\nnothing$", "") ## trim off trailing "nothing"
+                txt = replace(txt, r"\nnothing$" => "") ## trim off trailing "nothing"
                 docode && length(txt) > 0 && rmd_code_chunk(buf, txt)
             elseif isa(result, Invisible)
                 "Do not show output or input"
@@ -240,7 +240,7 @@ function mmd_to_rmd(fname::AbstractString; kwargs...)
     mmd_to_md(fname)
 
     bname = basename(fname)
-    bname = replace(bname, r"\.mmd$", "")
+    bname = replace(bname, r"\.mmd$" => "")
     markdownToRmd("$bname.md"; kwargs...)
 end
 export mmd_to_rmd

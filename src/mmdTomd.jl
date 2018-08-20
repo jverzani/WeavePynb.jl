@@ -10,11 +10,11 @@ If converting into many formats this should only be run once, as otherwise the d
 function mmd_to_md(fname::AbstractString; kwargs...)
 
     bname = basename(fname)
-    ismatch(r"\.mmd$", bname) || error("this is for mmd template files")
-    bname = replace(bname, r"\.mmd$", "")
+    occursin(r"\.mmd$", bname) || error("this is for mmd template files")
+    bname = replace(bname, r"\.mmd$" => "")
 
-    jl = replace(fname,".mmd",".jl")
-    md = replace(fname,".mmd",".md")
+    jl = replace(fname,".mmd" => ".jl")
+    md = replace(fname,".mmd" => ".md")
     mmd = fname
 
     

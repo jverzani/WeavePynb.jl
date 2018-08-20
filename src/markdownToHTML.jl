@@ -18,7 +18,7 @@ Markdown.htmlinline(io::IO, md::AbstractString) = write(io, md)
 function markdownToHTML(fname::AbstractString; TITLE="", kwargs...)
     
     dirnm, basenm = dirname(fname), basename(fname)
-    newnm = replace(fname, r"[.].*", ".html")
+    newnm = replace(fname, r"[.].*" => ".html")
     out = mdToHTML(fname; TITLE=TITLE, kwargs...)
     
     io = open(newnm, "w")
@@ -42,8 +42,8 @@ Markdown idiosyncracies:
 """
 function mdToHTML(fname::AbstractString; TITLE="", kwargs...)
     m = make_module()
-    safeeval(m, parse("using LaTeXStrings, Plots; plotly()"))
-    safeeval(m, parse("macro q_str(x)  \"`\$x`\" end"))
+    safeeval(m, Meta.parse("using LaTeXStrings, Plots; plotly()"))
+    safeeval(m, Meta.parse("macro q_str(x)  \"`\$x`\" end"))
     buf = IOBuffer()
     added_gadfly_preamble = false
     
@@ -98,7 +98,7 @@ function mdToHTML(fname::AbstractString; TITLE="", kwargs...)
             ## hsould use dispatch here, but we don't....
             if result == nothing
                 "Do not show output, just input"
-                txt = replace(txt, r"\nnothing$", "") ## trim off trailing "nothing"
+                txt = replace(txt, r"\nnothing$" => "") ## trim off trailing "nothing"
                 docode && length(txt) > 0 && println(buf, """<pre class="sourceCode julia">$txt</pre>""")
             elseif isa(result, Invisible)
                 "Do not show output or input"
@@ -137,7 +137,7 @@ function mdToHTML(fname::AbstractString; TITLE="", kwargs...)
                     #                    img = stringmime("image/png", result.o)
                     imgfile = tempname() * ".png"
                     png(result, imgfile)
-                    img = base64encode(readstring(imgfile))
+                    img = base64encode(read(imgfile, String))
                     doout && println(buf, """<img alt="Embedded Image" src="data:image/png;base64,$img">""")
                 end
             elseif string(typeof(result)) == "FramedPlot"
@@ -146,11 +146,11 @@ function mdToHTML(fname::AbstractString; TITLE="", kwargs...)
                 doout && println(buf, """<img alt="Embedded Image" src="data:image/png;base64,$img">""")
             elseif  string(typeof(result)) == "Plot"
                 docode && length(txt) > 0 && println(buf, """<pre class="sourceCode julia">$txt</pre>""")
-                if !added_gadfly_preamble
-                    const snapsvgjs = Pkg.dir("Compose", "data", "snap.svg-min.js")
-                    ## XXX print out JavaScript
-                    added_gadfly_preamble = true
-                end
+                # if !added_gadfly_preamble
+                #     const snapsvgjs = Pkg.dir("Compose", "data", "snap.svg-min.js")
+                #     ## XXX print out JavaScript
+                #     added_gadfly_preamble = true
+                # end
                 doout && show(buf, "text/html", result)
             elseif string(typeof(result)) == "Figure"
                 "Must do gcf() for last line"
@@ -222,7 +222,7 @@ function mmd_to_html(fname::AbstractString; kwargs...)
     mmd_to_md(fname)
 
     bname = basename(fname)
-    bname = replace(bname, r"\.mmd$", "")
+    bname = replace(bname, r"\.mmd$" => "")
     markdownToHTML("$bname.md"; kwargs...)
 end
 export mmd_to_html
@@ -355,4 +355,4 @@ $( document ).ready(function() {
 </html>
 """
 
-const snapsvgjs = Pkg.dir("Compose", "data", "snap.svg-min.js")
+#const snapsvgjs = Pkg.dir("Compose", "data", "snap.svg-min.js")

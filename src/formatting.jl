@@ -2,8 +2,8 @@
 
 "markdown can leave wrapping p's"
 function strip_p(txt)
-    if ismatch(r"^<p>", txt)
-        txt = replace(replace(txt, r"^<p>", ""), r"</p>$", "")
+    if occursin(r"^<p>", txt)
+        txt = replace(replace(txt, r"^<p>" => ""), r"</p>$" => "")
     end
     txt
 end
@@ -22,7 +22,7 @@ Examples
 Invisible()
 ```
 """
-type Invisible
+mutable struct Invisible
 end
 
 """ 
@@ -34,7 +34,7 @@ HTMLoutput("<em>em</em>")
 ```
 
 """
-type HTMLoutput
+mutable struct HTMLoutput
     x
 end
 Base.show(io::IO, ::MIME"text/plain", x::HTMLoutput) = print(io, """<div>$(x.x)</div>""")
@@ -49,7 +49,7 @@ Examples:
 Verbatim("This will print, but not be executed")
 ```
 """
-type Verbatim
+mutable struct Verbatim
     x
 end
 Base.show(io::IO, ::MIME"text/plain", x::Verbatim) = print(io, """<pre class="sourceCode julia">$(x.x)</pre>""")
@@ -65,7 +65,7 @@ x = 2 + 2
 Outputonly(x)
 ```
 """
-type Outputonly
+mutable struct Outputonly
     x
 end
 
@@ -73,7 +73,7 @@ end
 abstract type Bootstrap end
 Base.show(io::IO, ::MIME"text/html", x::Bootstrap) = print(io, """$(x.x)""")
 
-type Alert <: Bootstrap
+mutable struct Alert <: Bootstrap
     x
     d::Dict
 end
@@ -95,9 +95,11 @@ function Base.show(io::IO, ::MIME"text/html", x::Alert)
     cls = haskey(x.d,:class) ? x.d[:class] : "success"
     txt = sprint(io -> show(io, "text/html", Markdown.parse(x.x)))
     tpl = """
-<div class="alert alert-$cls" role="alert">\
-$txt \
-</div>\
+<div class="alert alert-$cls" role="alert">
+    
+$txt 
+
+</div>
 """
     
     print(io, tpl)
@@ -108,7 +110,7 @@ end
 
 
 
-type Example <: Bootstrap
+mutable struct Example <: Bootstrap
     x
     d::Dict
 end
@@ -127,17 +129,21 @@ function Base.show(io::IO, ::MIME"text/html", x::Example)
     nm = haskey(x.d,:nm) ? " <small>$(x.d[:nm])</small>" : ""
     txt = sprint(io -> show(io, "text/html", Markdown.parse(x.x)))
     tpl = """
-<div class="alert alert-danger" role="alert">\
-<span class="glyphicon glyphicon-th" aria-hidden="true"></span>\
-<span class="text-uppercase">example:</span>$nm$txt\
-</div>\
+<div class="alert alert-danger" role="alert">
+    
+<span class="glyphicon glyphicon-th" aria-hidden="true"></span>
+    
+<span class="text-uppercase">example:</span>$nm$txt
+    
+</div>
+    
 """
     
     print(io, tpl)
 end
 
 
-type Popup <: Bootstrap
+mutable struct Popup <: Bootstrap
     x
     title
     icon
@@ -186,7 +192,7 @@ end
 Way to convert rectangular gird of values into a table
 
 """
-type Table <: Bootstrap
+mutable struct Table <: Bootstrap
     x
 end
 table(x) = Table(x)
