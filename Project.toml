@@ -1,3 +1,16 @@
+name = "WeavePynb"
+uuid = "3eb76e85-6931-56f2-ab3a-633fb9ee71c7"
+
 [deps]
-HCubature = "19dc6840-f33b-545b-b366-655c7e3ffd49"
-MTH229 = "59eb3160-e194-5db5-af16-b9d28ff7b512"
+Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
+Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
+Measures = "442fdcdd-2543-5da2-b0f3-8c86c306513e"
+Mustache = "ffc61752-8dc7-55ee-8c37-f3e9cdd09e70"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+
+[compat]
+julia = "≥ 1.0.0"
