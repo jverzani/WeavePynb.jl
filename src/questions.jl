@@ -39,7 +39,7 @@ mutable struct Radioq <: Question
     labels
     hint
     inline::Bool
-    
+
 end
 
 
@@ -107,7 +107,7 @@ Multiple choice question
 
 Arguments:
 
-* `choices`: vector of choices. 
+* `choices`: vector of choices.
 
 * `answer`: index of correct choice
 
@@ -138,7 +138,7 @@ booleanq(true, reminder="Does it hurt...")
 ```
 
 """
-function booleanq(ans::Bool, reminder="", answer_text=nothing;labels::Vector=["true", "false"], hint::AbstractString="", inline::Bool=true) 
+function booleanq(ans::Bool, reminder="", answer_text=nothing;labels::Vector=["true", "false"], hint::AbstractString="", inline::Bool=true)
     choices = labels[1:2]
     ans = 2 - ans
     radioq(choices, ans, reminder, answer_text; hint=hint, inline=inline, keep_order=true)
@@ -177,7 +177,7 @@ shortq("x^2", L"a expression using powers to compute x\\cdot x")
 
 Do not use format in answer part. The reminder defaults to an empty string.
 """
-function shortq(answer, reminder="", answer_text=nothing;hint::AbstractString="")   
+function shortq(answer, reminder="", answer_text=nothing;hint::AbstractString="")
     Shortq(answer, reminder, answer_text, hint)
 end
 
@@ -191,7 +191,7 @@ Example
 longq("a reminder", "an answer for the grader to see")
 ```
 """
-function longq(reminder="", answer_text=nothing;hint::AbstractString="", rows=3, cols=60)    
+function longq(reminder="", answer_text=nothing;hint::AbstractString="", rows=3, cols=60)
     Longq(reminder, answer_text, hint, rows, cols)
 end
 
@@ -290,6 +290,7 @@ latex_templates["Radioq"] = mt"""
 \begin{enumerate}
 {{#labels}}\item {{{.}}} {{/labels}}
 \end{enumerate}
+\verb+  -------------  +
 \vspace{12pt}
 """
 
@@ -300,6 +301,7 @@ latex_templates["Multiq"] = mt"""
 \begin{enumerate}
 {{#labels}}\item {{{.}}} {{/labels}}
 \end{enumerate}
+\verb+  -------------  +
 \vspace{12pt}
 """
 
@@ -342,7 +344,7 @@ html_templates["Numericq"] = mt"""
 <input id="{{ID}}" type="number" class="form-control">
 {{#units}}<span class="input-group-addon">{{{units}}}</span>{{/units}}
 </div>
-  
+
 <div id='{{ID}}_message'></div>
 </div>
 </div>
@@ -418,7 +420,7 @@ $("{{{selector}}}").on("change", function() {
 
 function markdown(x)
     length(x) == 0 && return("")
-    
+
     x = Markdown.parse(x)
     x = sprint(io -> WeavePynb.tohtml(io, x))
 #    x[4:end-4]                  # strip out <p></p>
@@ -431,7 +433,7 @@ function show(io::IO, m::MIME"text/html", x::Radioq)
 
     tpl = mt"""
     {{#items}}
-    <div  class="radio{{inline}}"> 
+    <div  class="radio{{inline}}">
     <label>
       <input type="radio" name="radio_{{ID}}" value="{{value}}">{{{label}}}
     </label>
@@ -446,23 +448,23 @@ choices = map(string, x.choices)
     ## make items
     for i in 1:length(choices)
         item = Dict("no"=>i,
-                "label"=>markdown(choices[i]), 
+                "label"=>markdown(choices[i]),
                 "value"=>i
                 )
         push!(items, item)
     end
 
     script = Mustache.render(html_templates["script_tpl"],
-                             Dict("ID"=>ID, 
+                             Dict("ID"=>ID,
                               "selector"=>"input:radio[name='radio_$ID']",
                               "correct"=>"this.value == $(x.answer)"))
-    
+
     form = Mustache.render(tpl, Dict("ID"=>ID, "items"=>items,
                                  "inline" => x.inline ? " inline" : ""
                                  ))
 
     Mustache.render(io, html_templates["question_tpl"],
-    Dict("form"=>form, "script"=>script, 
+    Dict("form"=>form, "script"=>script,
          "TYPE"=>"radio",
          "ID"=>ID, "hint"=>markdown(x.hint)))
 
@@ -487,4 +489,3 @@ md_templates["Radioq"] = mt"""
 {{/:items}}
 
 """
-

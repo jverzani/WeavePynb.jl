@@ -24,15 +24,15 @@ ipynb_tpl_v4 = mt"""
     ],
  "metadata": {
   "language_info": {
-   "file_extension": ".jl",                                                                                                             
-   "mimetype": "application/julia", 
+   "file_extension": ".jl",
+   "mimetype": "application/julia",
    "name": "julia",
    "version": "0.6"
   },
  "kernelspec": {
-   "display_name": "Julia 0.6.0",
+   "display_name": "Julia 1.0.0",
    "language": "julia",
-   "name": "julia-0.6"
+   "name": "julia-1.0"
   }
 
  },
@@ -43,7 +43,7 @@ ipynb_tpl_v4 = mt"""
 """
 
 not_needed = """
- 
+
 """
 
 const ipynb_tpl = ipynb_tpl_v4
@@ -66,7 +66,7 @@ function render_gadfly(img)
         draw(PNG(io, 5inch, inch), img)
     end
     data = base64encode(read(imgfile, String))
-    
+
     out = Dict()
 #    out["metadata"] = Dict()
     out["data"] = Dict()
@@ -87,7 +87,7 @@ function render_plotly(img)
     imgfile = tempname()
     png(img, imgfile)
     data = base64encode(read(imgfile, String))
-    
+
     out = Dict()
     out["data"] = Dict()
     out["data"]["image/png"] = data
@@ -118,11 +118,11 @@ end
 
 ## Main function to take a jmd file and turn into a ipynb file
 function markdownToPynb(fname::AbstractString)
-    
+
     dirnm, basenm = dirname(fname), basename(fname)
     newnm = replace(fname, r"[.].*" => ".ipynb")
     out = mdToPynb(fname)
-    
+
     io = open(newnm, "w")
     write(io, out)
     close(io)
@@ -138,7 +138,7 @@ Tries to handle graphics, but isn't perfect:
 
 * PyPlot graphics have idiosyncracies:
 
-- basic usage requires a call of `gcf()` as last entry of  a cell. This will *also* call clear on the figure, so that 
+- basic usage requires a call of `gcf()` as last entry of  a cell. This will *also* call clear on the figure, so that
 any subsequent figures are added to a new canvas
 
 - for 3d usage, this is not the case. The 3d graphics use a different backend and the display is different.
@@ -149,14 +149,14 @@ any subsequent figures are added to a new canvas
 function mdToPynb(fname::AbstractString)
 
     m = make_module()
-    
+
     newblocks = Any[]
     added_gadfly_preamble = false
 
     #    process_block("using WeavePynb, LaTeXStrings, Plots; pyplot()", m)
     process_block("using WeavePynb, LaTeXStrings, Plots; gr()", m)
     safeeval(m, Meta.parse("macro q_str(x)  \"`\$x`\" end"))
-    
+
     out = Markdown.parse_file(fname,  flavor=Markdown.julia)
     for i in 1:length(out.content)
         cell = Dict()
@@ -179,7 +179,7 @@ function mdToPynb(fname::AbstractString)
             ## we need to set
             ## nocode, noeval, noout
             langs = map(lstrip, split(lang, ","))
-            
+
             docode, doeval, doout = true, true, true
             if "nocode" in langs
                 docode = false
@@ -190,29 +190,29 @@ function mdToPynb(fname::AbstractString)
             if "noout" in langs
                 doout = false
             end
-            
-            
+
+
             ## language is used to pass in arguments
             result = nothing
             if doeval
                     result = process_block(txt, m)
             end
 
-            !docode && (txt = "")            
+            !docode && (txt = "")
 
 
-            
+
             cell["cell_type"] = "code"
             cell["execution_count"] = 1
             #cell["collapsed"] = false
             #cell["language"] = "python"
             #            cell["input"] = txt
             cell["source"] = [txt]
-            
 
-           
+
+
             println("Type of result: $(typeof(result))")
-            
+
             if result == nothing
                 cell["outputs"] = []
             elseif isa(result, Question)
@@ -229,7 +229,7 @@ function mdToPynb(fname::AbstractString)
                     continue
                 end
 
-            elseif isa(result, Verbatim) 
+            elseif isa(result, Verbatim)
                 "Do not execute input, show as is"
                 #                cell["input"] = result.x
                 #                cell["outputs"] = []
@@ -241,7 +241,7 @@ function mdToPynb(fname::AbstractString)
 #                if false  # XXX this has issues?
                     tmp = tempname()*".png"
                     Base.invokelatest(png, result, tmp)
-                    
+
                     dpi = 120
                     cell["outputs"] = [Dict(
                                             "output_type" => "execute_result",
@@ -250,7 +250,7 @@ function mdToPynb(fname::AbstractString)
                                                            "image/png" => base64encode(read(tmp, String))
                                                            #"image/png" => out
                                                            ),
-                                       "metadata" => Dict("image/png" => Dict("width"=>5*dpi, "height"=>4*dpi))  
+                                       "metadata" => Dict("image/png" => Dict("width"=>5*dpi, "height"=>4*dpi))
                     )]
 #                else
 #                    cell["outputs"] = []
@@ -260,7 +260,7 @@ function mdToPynb(fname::AbstractString)
             #     ## Winston graphics
             #     cell["outputs"] = [render_winston(result)]
             # elseif  isa(result, Plots.Plot)
-            #     # if isa(result, Plots.Plot{Plots.GadflyBackend})                
+            #     # if isa(result, Plots.Plot{Plots.GadflyBackend})
             #     #     ## Gadfly graphics
             #     #     if !added_gadfly_preamble
             #     #         ## XXX this is *not* working, needed to figure out preamble... XXX
@@ -293,16 +293,16 @@ function mdToPynb(fname::AbstractString)
                 #                outtype = ifelse(ismatch(r"latex", string(mtype)), "latex", "text")
                 outtype = ifelse(occursin(r"latex", string(mtype)), "text/latex", "text/plain")
                     output = ""
-                try 
+                try
                     output =  [sprint(io -> Base.invokelatest(show, io, mtype, result))]
                 catch e
                 end
                 tmp["data"] = Dict()
                 tmp["data"][outtype] = collect(output)
-                
+
                 cell["outputs"] = [tmp]
             end
-            
+
         else
             cell["cell_type"] = "markdown"
             BigHeader = Union{Markdown.Header{1},Markdown.Header{2}}
@@ -320,8 +320,8 @@ function mdToPynb(fname::AbstractString)
             end
 
             result = out.content[i]
-            
-            
+
+
 
             cell["source"] = sprint(io -> Markdown.html(io, out.content[i]))
         end
@@ -334,10 +334,10 @@ cell["source"] == String[""] && println("XXXXXXX")
 
         push!(newblocks, JSON.json(cell))
     end
-    
+
 
     ## return string
     Mustache.render(ipynb_tpl, Dict("TITLE" => "TITLE", "CELLS" => join(newblocks, ",\n")))
 
-   
+
 end

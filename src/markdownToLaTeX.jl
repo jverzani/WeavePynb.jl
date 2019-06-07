@@ -34,8 +34,8 @@ function markdownToLaTeX(fname::AbstractString; use_template=true, tpl=latex_tpl
 
     out = mdToLaTeX(fname, basenm, use_template, tpl; kwargs...)
 
-    
-    
+
+
     io = open(joinpath(basenm, newnm), "w")
     write(io, out)
     close(io)
@@ -67,7 +67,7 @@ Tries to handle graphics, but isn't perfect:
 
 * PyPlot graphics have idiosyncracies:
 
-- basic usage requires a call of `gcf()` as last entry of  a cell. This will *also* call clear on the figure, so that 
+- basic usage requires a call of `gcf()` as last entry of  a cell. This will *also* call clear on the figure, so that
 any subsequent figures are added to a new canvas
 
 - for 3d usage, this is not the case. The 3d graphics use a different backend and the display is different.
@@ -79,14 +79,14 @@ function mdToLaTeX(fname::AbstractString, outdir, use_template=true, tpl=latex_t
 
     D = Dict(string(k)=>v for (k,v) in kwargs)
     imgwidth = haskey(D, "imgwidth") ? D["imagewidth"] : "0.65"
-    
+
     m = make_module()
     buf = IOBuffer()
 
     process_block("using WeavePynb, LaTeXStrings, Plots; gr()", m) #pyplot(), pgfplots()
-    
+
     safeeval(m, Meta.parse("macro q_str(x)  \"\\\\verb@\$x@\" end"))
-    
+
     out = Markdown.parse_file(fname, flavor=Markdown.julia)
     for i in 1:length(out.content)
         println("processing $i ...")
@@ -102,7 +102,7 @@ function mdToLaTeX(fname::AbstractString, outdir, use_template=true, tpl=latex_t
             ## we need to set
             ## nocode, noeval, noout
             langs = map(lstrip, split(lang, ","))
-            
+
             docode, doeval, doout = true, true, true
             if "nocode" in langs
                 docode = false
@@ -113,8 +113,8 @@ function mdToLaTeX(fname::AbstractString, outdir, use_template=true, tpl=latex_t
             if "noout" in langs
                 doout = false
             end
-            
-            
+
+
             ## language is used to pass in arguments
             result = nothing
             if doeval
@@ -123,7 +123,7 @@ function mdToLaTeX(fname::AbstractString, outdir, use_template=true, tpl=latex_t
 
             !docode && (txt = "")
 
-            
+
 #            txt = out.content[i].code
 #            result = process_block(txt, m)
             ## special cases: questions and graphical output
@@ -132,28 +132,32 @@ function mdToLaTeX(fname::AbstractString, outdir, use_template=true, tpl=latex_t
             elseif isa(result, Question)
                 println(buf, "     ")
                 show(buf, "application/x-latex", result)
+
+            elseif isa(result, ImageFile)
+                print(buf, "\\includegraphics[height=3in]{$(result.f)}")
+
             elseif string(typeof(result)) == "FramedPlot"
                 ## Winston graphics
                 println("Handle winston graphics")
                 code_input(buf, txt)
-                
+
             elseif  string(typeof(result)) == "Plot"
                 println("Handle gadfly graphics")
-                code_input(buf, txt)                
+                code_input(buf, txt)
                 imgnm = "fig-$i-" * string(hash(txt)) * ".png"
 #                imgnm = randstring() * ".png"
                 png(result, joinpath(outdir, imgnm))
 
                 println(buf, """\\n\\includegraphics[width=$imgwidth\\textwidth]{$imgnm}\\n""")
-                
+
             elseif string(typeof(result)) == "Figure"
                 println("Handler PyPlot graphics")
-                code_input(buf, txt)                                
+                code_input(buf, txt)
 
             elseif isa(result, Plots.Plot)
-                code_input(buf, txt)                                                
+                code_input(buf, txt)
 
-                imgnm = "fig-$i-" * string(hash(txt)) * ".png"                
+                imgnm = "fig-$i-" * string(hash(txt)) * ".png"
 #                imgnm = "fig_" * randstring() * ".png"
                 Base.invokelatest(png, result, joinpath(outdir, imgnm))
                 println("write to $imgnm")
@@ -166,7 +170,7 @@ function mdToLaTeX(fname::AbstractString, outdir, use_template=true, tpl=latex_t
                     code_input(buf, txt)
                     if string(WeavePynb.bestmime(result)) in ["text/plain", "text/html"]
                         println(buf, "\\begin{Verbatim}[framesep=3mm,frame=leftline, fontshape=it,formatcom=\\color{darker-gray}]")
-                        Base.invokelatest(show, buf, mtype, result)                        
+                        Base.invokelatest(show, buf, mtype, result)
                         println(buf, "")
                         println(buf, "\\end{Verbatim}")
                         println(buf, " ")
@@ -179,7 +183,7 @@ function mdToLaTeX(fname::AbstractString, outdir, use_template=true, tpl=latex_t
                     end
                 end
             end
-            
+
         else
             try
                 ## Headers...
@@ -194,14 +198,14 @@ function mdToLaTeX(fname::AbstractString, outdir, use_template=true, tpl=latex_t
                 txt = replace(txt, "\\newline" => "")
                 println("~~~~")
                 println(txt)
-                println("~~~~")                
+                println("~~~~")
                 txt = replace(txt, "<br/>" => "\\newline") # hack for newlines...
                 println(buf, txt) #markdown_to_latex(txt))
                 println(buf, "")
             end
         end
     end
-    
+
     txt = String(take!(buf)) #takebuf_string(buf)
     ## return string
     if use_template
@@ -234,13 +238,13 @@ function mmd_to_latex(fname::AbstractString; force::Bool=false, kwargs...)
     tex = replace(fname,".mmd" => ".tex")
     mmd = fname
     md = "$bname.md"
-    
+
     ## do this only if html file older than either .mmd or .jl
     if force || (!isfile(tex) || (mtime(mmd) > mtime(tex)) | (mtime(jl) > mtime(tex)))
         include("$bname.jl")
 
         tpl = Mustache.template_from_file(fname)
-    
+
         io = open(md, "w")
         write(io, Mustache.render(tpl, getfield(Main, Symbol(bname))))
         close(io)
@@ -285,9 +289,9 @@ function make_exam(fname::String; kwargs...)
 }{%
    \\end{description}%
 }
-      
+
 \\begin{document}
-    
+
     {{{txt}}}
 
 
@@ -296,4 +300,4 @@ function make_exam(fname::String; kwargs...)
 
     markdownToLaTeX(fname; use_template=true, tpl=latex_tpl, kwargs...)
 
-end    
+end

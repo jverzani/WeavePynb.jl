@@ -68,7 +68,7 @@ end
 
 function show(io::IO, mime::MIME"text/latex", header::Markdown.Header{l}) where {l}
     txt = join(header.text)
-    if l == 1 
+    if l == 1
         print(io, "\\section{$(txt)}")
     end
     if l == 2
@@ -125,6 +125,11 @@ function show(io::IO, ::MIME"text/latex", md::Markdown.List)
         [show(io, "text/latex", i) for i in item]
     end
   end
+end
+
+
+function show(io::IO, ::MIME"text/latex", md::Markdown.HorizontalRule)
+    print(io, "\\hrule")
 end
 
 # Inline elements

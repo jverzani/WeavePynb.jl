@@ -14,7 +14,7 @@ latexq_tpl = mt"""
 \begin{html}
 <style>
 pre {font-size: 1.2em; background-color: #EEF0F5;}
-ul li {list-style-image: url(http://www.math.csi.cuny.edu/static/images/julia.png);}  
+ul li {list-style-image: url(http://www.math.csi.cuny.edu/static/images/julia.png);}
 </style>
 \end{html}
 \begin{document}
@@ -27,7 +27,7 @@ function markdownToLaTeXQ(fname::AbstractString)
     dirnm, basenm = dirname(fname), basename(fname)
     newnm = replace(fname, r"[.].*" => ".tex")
     out = mdToLaTeXQ(fname)
-    
+
     io = open(newnm, "w")
     write(io, out)
     close(io)
@@ -44,7 +44,7 @@ Tries to handle graphics, but isn't perfect:
 
 * PyPlot graphics have idiosyncracies:
 
-- basic usage requires a call of `gcf()` as last entry of  a cell. This will *also* call clear on the figure, so that 
+- basic usage requires a call of `gcf()` as last entry of  a cell. This will *also* call clear on the figure, so that
 any subsequent figures are added to a new canvas
 
 - for 3d usage, this is not the case. The 3d graphics use a different backend and the display is different.
@@ -63,7 +63,7 @@ function mdToLaTeXQ(fname::AbstractString)
     out = Markdown.parse_file(fname, flavor=Markdown.julia)
     for i in 1:length(out.content)
         println("processing $i ...")
-                
+
         if isa(out.content[i], Markdown.Code)
             ## Code Blocks are evaluated and their last value is added to the output
             ## If the value is of type Question, the we display differently
@@ -74,7 +74,7 @@ function mdToLaTeXQ(fname::AbstractString)
             ## we need to set
             ## nocode, noeval, noout
             langs = map(lstrip, split(lang, ","))
-            
+
             docode, doeval, doout = true, true, true
             if "nocode" in langs
                 docode = false
@@ -85,8 +85,8 @@ function mdToLaTeXQ(fname::AbstractString)
             if "noout" in langs
                 doout = false
             end
-            
-            
+
+
             ## language is used to pass in arguments
             result = nothing
             if doeval
@@ -95,8 +95,8 @@ function mdToLaTeXQ(fname::AbstractString)
 
             !docode && (txt = "")
 
-            
-            
+
+
 #            txt = out.content[i].code
 #            result = process_block(txt, m)
             ## special cases: questions and graphical output
@@ -115,40 +115,40 @@ function mdToLaTeXQ(fname::AbstractString)
                 println(buf, "\\end{verbatim}")
 
                 println(buf, "\\begin{html}")
-                img = stringmime("image/png", result)                
+                img = stringmime("image/png", result)
                 println(buf, """\n<img alt="Embedded Image" src="data:image/png;base64,$img">\n""")
                 println(buf, "\\end{html}")
-                
+
             elseif  string(typeof(result)) == "Plot"
                 println("Handle gadfly graphics")
                 println(buf, "\\begin{verbatim}")
                 println(buf, txt)
                 println(buf, "\\end{verbatim}")
 
-                
+
                 println(buf, "\\begin{html}")
-                img = stringmime("image/png", result)                
+                img = stringmime("image/png", result)
                 println(buf, """\n<img alt="Embedded Image" src="data:image/png;base64,$img">\n""")
                 println(buf, "\\end{html}")
-                
+
             elseif string(typeof(result)) == "Figure"
-                println("XXX a FIgure")                
+                println("XXX a FIgure")
                 println(buf, "\\begin{verbatim}")
                 println(buf, txt)
                 println(buf, "\\end{verbatim}")
 
                 println(buf, "\\begin{html}")
-                img = stringmime("image/png", result)                
+                img = stringmime("image/png", result)
                 println(buf, """\n<img alt="Embedded Image" src="data:image/png;base64,$img">\n""")
                 println(buf, "\\end{html}")
-            elseif isa(result, Plots.Plot) 
+            elseif isa(result, Plots.Plot)
                 println("XXX a plot")
                 println(buf, "\\begin{verbatim}")
                 println(buf, txt)
                 println(buf, "\\end{verbatim}")
                 tmp = tempname() * ".png"
                 Base.invokelatest(Plots.png, result, tmp)
-                img = base64encode(readstring(tmp))
+                img = base64encode(read(tmp, String))
                 println(buf, "\\begin{html}")
                 println(buf, """\n<img alt="Embedded Image" src="data:image/png;base64,$img">\n""")
                 println(buf, "\\end{html}")
@@ -160,7 +160,7 @@ function mdToLaTeXQ(fname::AbstractString)
                     println(buf, txt)
                     println(buf, "\\end{verbatim}")
                     if string(WeavePynb.bestmime(result)) == "text/plain"
-                      println(buf, "\\begin{verbatim}")                
+                      println(buf, "\\begin{verbatim}")
                       show(buf, mtype, result)
                       println(buf, "\\end{verbatim}")
                     else
@@ -168,7 +168,7 @@ function mdToLaTeXQ(fname::AbstractString)
                     end
                 end
             end
-            
+
         else
             try
                 ## Headers...
@@ -186,7 +186,7 @@ function mdToLaTeXQ(fname::AbstractString)
             end
         end
     end
-    
+
     txt = String(take!(buf)) #takebuf_string(buf)
     ## return string
     Mustache.render(latexq_tpl, Dict("TITLE" => "TITLE", "txt" => txt))
@@ -210,13 +210,13 @@ function mmd_to_latexq(fname::AbstractString; force::Bool=false, kwargs...)
     tex = replace(fname,".mmd" => ".tex")
     mmd = fname
     md = "$bname.md"
-    
+
     ## do this only if html file older than either .mmd or .jl
     if force || (!isfile(tex) || (mtime(mmd) > mtime(tex)) | (mtime(jl) > mtime(tex)))
         include("$bname.jl")
 
         tpl = Mustache.template_from_file(fname)
-    
+
         io = open(md, "w")
 
         write(io, Mustache.render(tpl, getfield(Main, Symbol(bname))))

@@ -13,7 +13,7 @@ function md(x)
     strip_p(out)
 end
 
-""" 
+"""
 Hide output and input, but execute cell.
 
 Examples
@@ -25,7 +25,7 @@ Invisible()
 mutable struct Invisible
 end
 
-""" 
+"""
 Show output as HTML
 
 Examples
@@ -96,12 +96,12 @@ function Base.show(io::IO, ::MIME"text/html", x::Alert)
     txt = sprint(io -> show(io, "text/html", Markdown.parse(x.x)))
     tpl = """
 <div class="alert alert-$cls" role="alert">
-    
-$txt 
+
+$txt
 
 </div>
 """
-    
+
     print(io, tpl)
 end
 
@@ -130,15 +130,15 @@ function Base.show(io::IO, ::MIME"text/html", x::Example)
     txt = sprint(io -> show(io, "text/html", Markdown.parse(x.x)))
     tpl = """
 <div class="alert alert-danger" role="alert">
-    
+
 <span class="glyphicon glyphicon-th" aria-hidden="true"></span>
-    
+
 <span class="text-uppercase">example:</span>$nm$txt
-    
+
 </div>
-    
+
 """
-    
+
     print(io, tpl)
 end
 
@@ -198,14 +198,14 @@ end
 table(x) = Table(x)
 
 table_html_tpl=mt"""
-    
+
 <div class="table-responsive">
 <table class="table table-hover">
 {{{:nms}}}
-{{{:body}}}                                                                         
+{{{:body}}}
 </table>
 </div>
-    
+
 """
 
 
@@ -219,10 +219,39 @@ function Base.show(io::IO, ::MIME"text/html", x::Table)
         bdy = bdy * "<tr>"
         for j in 1:n
             val = Base.invokelatest(getindex, x.x, i, j)
+            if ismissing(val)
+                val = "."
+            end
             bdy = bdy * "<td>$(md(val))</td>"
         end
         bdy = bdy * "</tr>\n"
     end
     d[:body] = bdy
+    Mustache.render(io, table_html_tpl, d)
+end
+
+mutable struct NamedTable <: Bootstrap
+data
+rownames
+colnames
+end
+
+function Base.show(io::IO, ::MIME"text/html", x::NamedTable)
+    vals = x.data
+    cnames = x.colnames
+    rnames = x.rownames
+    d = Dict()
+    d[:nms] = "<tr><th></th><th>$(join(map(string, cnames), "</th><th>"))</th></tr>\n"
+    m,n = Base.invokelatest(size, x.data)
+    buf = IOBuffer()
+    for i in 1:m
+        print(buf, "<tr><td>", rnames[i],"</td>")
+        for j in 1:n
+            val = Base.invokelatest(getindex, x.data, i, j)
+            print(buf, "<td>", md(val), "</td>")
+        end
+        println(buf, "</tr>")
+    end
+    d[:body] = String(take!(buf))
     Mustache.render(io, table_html_tpl, d)
 end

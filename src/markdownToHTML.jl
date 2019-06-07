@@ -16,11 +16,11 @@ Markdown.htmlinline(io::IO, md::AbstractString) = write(io, md)
 
 ## Main function to take a jmd file and turn into an HTML
 function markdownToHTML(fname::AbstractString; TITLE="", kwargs...)
-    
+
     dirnm, basenm = dirname(fname), basename(fname)
     newnm = replace(fname, r"[.].*" => ".html")
     out = mdToHTML(fname; TITLE=TITLE, kwargs...)
-    
+
     io = open(newnm, "w")
     write(io, out)
     close(io)
@@ -46,30 +46,30 @@ function mdToHTML(fname::AbstractString; TITLE="", kwargs...)
     safeeval(m, Meta.parse("macro q_str(x)  \"`\$x`\" end"))
     buf = IOBuffer()
     added_gadfly_preamble = false
-    
+
     process_block("using WeavePynb, LaTeXStrings", m)
     out = Markdown.parse_file(fname, flavor=Markdown.julia)
 
     for i in 1:length(out.content)
-#        println(out.content[i])
+        println("$i: ", out.content[i])
         if isa(out.content[i], Markdown.Code)
             ## Code Blocks are evaluated and their last value is added to the output
             ## this is different from IJulia, but similar.
             ## There are issues with Gadfly graphics (need the script...)
             ## and PyPlot, where we need an invocation to manage the figures
-            
+
             txt = out.content[i].code
             lang = out.content[i].language
 
             print("$i: ")
             println(txt)
 
-            
+
             ## we need to set
             ## nocode, noeval, noout
             langs = map(lstrip, split(lang, ","))
-            
-            docode, doeval, doout = true, true, true
+
+            docode, doeval, doout, docompact = true, true, true, false
             if "nocode" in langs
                 docode = false
             end
@@ -79,16 +79,20 @@ function mdToHTML(fname::AbstractString; TITLE="", kwargs...)
             if "noout" in langs
                 doout = false
             end
-            
-            
+            if "nocompact" in langs
+                docompact = false
+            end
+
             ## language is used to pass in arguments
             result = nothing
             if doeval
                 result = process_block(txt, m)
             end
 
+            result !== nothing && @show result
+
             !docode && (txt = "")
-            
+
             if isa(result, Outputonly)
                 txt = ""
                 result = result.x
@@ -103,11 +107,11 @@ function mdToHTML(fname::AbstractString; TITLE="", kwargs...)
             elseif isa(result, Invisible)
                 "Do not show output or input"
                 nothing
-            elseif isa(result, HTMLoutput) 
+            elseif isa(result, HTMLoutput)
                 "Do not execute input, show as is"
                 txt = ""
                 doout && show(buf, "text/plain", result)
-            elseif isa(result, Verbatim) 
+            elseif isa(result, Verbatim)
                 "Do not execute input, show as is"
                 doout && show(buf, "text/plain", result)
             elseif isa(result, Bootstrap)
@@ -122,7 +126,7 @@ function mdToHTML(fname::AbstractString; TITLE="", kwargs...)
                 doout && println(buf, gif_to_data(result.f, result.caption))
             elseif isa(result, Plots.Plot)
                 docode && length(txt) > 0 && println(buf, """<pre class="sourceCode julia">$txt</pre>""")
-                
+
                 # if isa(result, Plots.Plot{Plots.GadflyBackend})
                 #      if !added_gadfly_preamble
                 #        ## XXX print out JavaScript
@@ -132,7 +136,7 @@ function mdToHTML(fname::AbstractString; TITLE="", kwargs...)
                 # else
                 if isa(result, Plots.Plot{Plots.PlotlyBackend})
                     Plots.prepare_output(result);
-                    doout && write(buf,  Plots.html_body(result))                    
+                    doout && write(buf,  Plots.html_body(result))
                 else
                     #                    img = stringmime("image/png", result.o)
                     imgfile = tempname() * ".png"
@@ -168,23 +172,26 @@ function mdToHTML(fname::AbstractString; TITLE="", kwargs...)
                     println(txt)
                     println((mtype, typeof(result)))#, sprint(io -> show(io, mtype, result))))
                     if doout
-                        if string(mtype) == "text/plain"                
+                        if string(mtype) == "text/plain"
                             println(tmpbuf, """<pre class="output">""")
-                            println(result)
-                            show(tmpbuf, mtype, result)
+                            show(IOContext(tmpbuf,:compact=> docompact), mtype, result)
                             println(tmpbuf, """</pre>""")
                         else
+                            @show "latex", result
                             println(tmpbuf, """<div class="well well-sm">""")
-                            show(tmpbuf, mtype, result)
+                            show(IOContext(tmpbuf,:compact=> docompact), mtype, result)
                             println(tmpbuf, """</div>""")
                         end
-                        println(buf, String(take!(tmpbuf))) 
+                        txt = String(take!(tmpbuf))
+                        @show txt
+                        println(buf, txt)
                     end
+
                 catch e
                     ## no output
                 end
             end
-            
+
         else
            if isa(out.content[i], Markdown.LaTeX)
                Markdown.latex(buf, out.content[i])
@@ -194,7 +201,7 @@ function mdToHTML(fname::AbstractString; TITLE="", kwargs...)
            end
         end
 
-        
+
     end
 
     body = String(take!(buf)) #takebuf_string(buf)
@@ -228,7 +235,7 @@ end
 export mmd_to_html
 
 
-""" 
+"""
 Template for an HTML page with embedded questions.
 
 Takes the following  arguments in template for Mustache
@@ -236,7 +243,7 @@ Takes the following  arguments in template for Mustache
 :style -- optional additional style values
 :BRAND_HREF -- for upper left corner of nav bar
 :BRAND_NAME
-:body -- filled in 
+:body -- filled in
 
 Uses Bootstrap styling and MathJaX for LaTeX markup.
 
@@ -246,7 +253,7 @@ html_tpl = mt"""
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="utf-8"> 
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
 
@@ -264,6 +271,12 @@ body { padding-top: 60px; }
 h5:before {content:"\2746\ ";}
 h6:before {content:"\2742\ ";}
 pre {display: block;}
+th, td {
+  padding: 15px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+tr:hover {background-color: #f5f5f5;}
 </style>
 
 <script src="https://code.jquery.com/jquery.js"></script>
@@ -278,7 +291,7 @@ pre {display: block;}
 
 <!-- not TeX-AMS-MML_HTMLorMML-->
 <script type="text/javascript"
-  src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_SVG">  
+  src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_SVG">
 </script>
 <script>
 MathJax.Hub.Config({
@@ -293,18 +306,18 @@ MathJax.Hub.Config({
 
 <script type="text/javascript">
 $( document ).ready(function() {
-  $("h1").each(function(index) { 
+  $("h1").each(function(index) {
        var title = $( this ).text()
        $("#page_title").html("<strong>" + title + "</strong>");
        document.title = title
   });
   $( "h2" ).each(function( index ) {
-    var nm =  $( this ).text();                                    
+    var nm =  $( this ).text();
     var id = $.trim(nm).replace(/ /g,'');
     this.id = id
     $("#page_dropdown").append("<li><a href='#" + id + "'>" + nm + "</a></li>");
   });
-  $('[data-toggle="popover"]').popover();  
+  $('[data-toggle="popover"]').popover();
 });
 </script>
 
@@ -349,7 +362,7 @@ $( document ).ready(function() {
   <div class="span10 offset1">
 {{{:body}}}
   </div>
-</div>  
+</div>
 
 </body>
 </html>
