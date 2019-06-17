@@ -27,12 +27,12 @@ ipynb_tpl_v4 = mt"""
    "file_extension": ".jl",
    "mimetype": "application/julia",
    "name": "julia",
-   "version": "0.6"
+   "version": "1.1.0"
   },
  "kernelspec": {
-   "display_name": "Julia 1.0.0",
+   "display_name": "Julia 1.1.0",
    "language": "julia",
-   "name": "julia-1.0"
+   "name": "julia-1.1"
   }
 
  },
@@ -334,8 +334,8 @@ cell["source"] == String[""] && println("XXXXXXX")
 
         push!(newblocks, JSON.json(cell))
     end
-
-
+println("Here it is.....")
+@show ipynb_tpl
     ## return string
     Mustache.render(ipynb_tpl, Dict("TITLE" => "TITLE", "CELLS" => join(newblocks, ",\n")))
 
