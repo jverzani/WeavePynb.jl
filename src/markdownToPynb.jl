@@ -27,12 +27,12 @@ ipynb_tpl_v4 = mt"""
    "file_extension": ".jl",
    "mimetype": "application/julia",
    "name": "julia",
-   "version": "1.1.0"
+   "version": "1.3"
   },
  "kernelspec": {
-   "display_name": "Julia 1.1.0",
+   "display_name": "Julia 1.3",
    "language": "julia",
-   "name": "julia-1.1"
+   "name": "julia-1.3"
   }
 
  },

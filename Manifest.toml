@@ -86,7 +86,7 @@ version = "0.0.4"
 [[DiffRules]]
 deps = ["Random", "Test"]
 git-tree-sha1 = "dc0869fb2f5b23466b32ea799bd82c76480167f7"
-uuid = "b552c78f-8df3-52c6-915a-8e097449b14b"
+uid = "b552c78f-8df3-52c6-915a-8e097449b14b"
 version = "0.0.10"
 
 [[Distributed]]
